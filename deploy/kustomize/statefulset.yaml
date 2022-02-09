@@ -1,0 +1,76 @@
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: arrebato
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: arrebato
+  updateStrategy:
+    type: RollingUpdate
+  serviceName: arrebato-cluster
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 20Gi
+  template:
+    metadata:
+      labels:
+        app: arrebato
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /metrics
+        prometheus.io/port: "5003"
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 50
+              podAffinityTerm:
+                topologyKey: "kubernetes.io/hostname"
+                labelSelector:
+                  matchLabels:
+                    app: arrebato
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: server
+          image: ghcr.io/davidsbond/arrebato:latest
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: "1"
+              memory: 1Gi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          ports:
+            - containerPort: 5000
+              name: raft
+            - containerPort: 5001
+              name: serf
+            - containerPort: 5002
+              name: grpc
+            - containerPort: 5003
+              name: metrics
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          args:
+            - --peers=arrebato-0.arrebato-cluster.$(NAMESPACE).svc.cluster.local
+            - --advertise-address=$(POD_NAME).arrebato-cluster.$(NAMESPACE).svc.cluster.local
+            - --log-level=5
+          volumeMounts:
+            - mountPath: /var/lib/arrebato
+              name: data

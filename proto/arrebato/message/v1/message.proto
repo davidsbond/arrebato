@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/message/v1;message";
+
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+
+// Package arrebato.message.v1 provides domain models for messages.
+package arrebato.message.v1;
+
+// The Message message describes a single message stored within a topic.
+message Message {
+  // The topic the message belongs to.
+  string topic = 1;
+  // The location of the message within the topic. This is managed by the cluster and should not be provided when
+  // producing messages.
+  uint64 index = 2;
+  // The client-provided message contents.
+  google.protobuf.Any payload = 3;
+  // The time at which the message was produced. This is managed by the cluster and should not be provided when
+  // producing messages.
+  google.protobuf.Timestamp timestamp = 4;
+}

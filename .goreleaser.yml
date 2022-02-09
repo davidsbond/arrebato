@@ -1,0 +1,108 @@
+project_name: "arrebato"
+before:
+  hooks:
+    - make kustomize
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags:
+      - -trimpath
+    ldflags:
+      - "-s -w -X main.version={{ .Version }}"
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    binary: "{{ .ProjectName }}"
+    hooks:
+      post:
+        - upx -qq {{ .Path }}
+
+dockers:
+  - id: linux_amd64
+    goos: linux
+    goarch: amd64
+    image_templates:
+      - "ghcr.io/davidsbond/arrebato:{{ .Tag }}-amd64"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.documentation=https://github.com/davidsbond/arrebato"
+      - "--label=org.opencontainers.image.source=git@github.com:davidsbond/arrebato.git"
+      - "--label=org.opencontainers.image.licenses=Apache-2.0"
+      - "--label=org.opencontainers.image.base.digest=fac888659ca3eb59f7d5dcb0d62540cc5c53615e2671062b36c815d000da8ef4"
+      - "--label=org.opencontainers.image.base.name=gcr.io/distroless/static"
+      - "--platform=linux/amd64"
+
+  - id: linux_arm64
+    goos: linux
+    goarch: arm64
+    image_templates:
+      - "ghcr.io/davidsbond/arrebato:{{ .Tag }}-arm64"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.documentation=https://github.com/davidsbond/arrebato"
+      - "--label=org.opencontainers.image.source=git@github.com:davidsbond/arrebato.git"
+      - "--label=org.opencontainers.image.licenses=Apache-2.0"
+      - "--label=org.opencontainers.image.base.digest=fac888659ca3eb59f7d5dcb0d62540cc5c53615e2671062b36c815d000da8ef4"
+      - "--label=org.opencontainers.image.base.name=gcr.io/distroless/static"
+      - "--platform=linux/arm64"
+
+docker_manifests:
+  - name_template: "ghcr.io/davidsbond/arrebato:{{ .Tag }}"
+    image_templates:
+      - "ghcr.io/davidsbond/arrebato:{{ .Tag }}-amd64"
+      - "ghcr.io/davidsbond/arrebato:{{ .Tag }}-arm64"
+
+source:
+  enabled: true
+  format: "zip"
+  name_template: "{{ .ProjectName }}-{{ .Version }}_SOURCE"
+
+sboms:
+  - artifacts: source
+
+archives:
+  - format: zip
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_SHA256SUMS"
+  algorithm: sha256
+  extra_files:
+    - glob: ./install.yaml
+
+signs:
+  - artifacts: checksum
+    args:
+      - "--batch"
+      - "--local-user"
+      - "{{ .Env.GPG_FINGERPRINT }}"
+      - "--output"
+      - "${signature}"
+      - "--detach-sign"
+      - "${artifact}"
+
+release:
+  prerelease: auto
+  mode: replace
+  extra_files:
+    - glob: ./install.yaml
+
+changelog:
+  use: github
+

@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/message/command/v1;messagecmd";
+
+import "arrebato/message/v1/message.proto";
+
+// Package arrebato.message.command.v1 provides commands written to the raft log regarding produced/consumed messages.
+// These messages are used internally by nodes in the cluster to portray changes from the leader node to all followers.
+package arrebato.message.command.v1;
+
+// The CreateMessage message is a command indicating that a new message has been produced.
+message CreateMessage {
+  // The message being produced.
+  arrebato.message.v1.Message message = 1;
+}

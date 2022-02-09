@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/message/service/v1;messagesvc";
+
+import "arrebato/message/v1/message.proto";
+
+// Package arrebato.message.service.v1 provides the schema for the MessageService, which is used to consume and produce
+// messages.
+package arrebato.message.service.v1;
+
+// The MessageService is a gRPC service that can manage read and write messages to the cluster.
+service MessageService {
+  // Produce a new message on a topic. This RPC should return a NOT_FOUND error code if the topic does not exist.
+  rpc Produce(ProduceRequest) returns (ProduceResponse);
+  // Consume messages from a topic. This RPC should return a NOT_FOUND error code if the topic does not exist.
+  rpc Consume(ConsumeRequest) returns (stream ConsumeResponse);
+}
+
+// The ProduceRequest message is the request DTO when calling MessageService.Produce. It describes the message to
+// produce.
+message ProduceRequest {
+  // The message to produce.
+  arrebato.message.v1.Message message = 1;
+}
+
+// The ProduceResponse message is the response DTO when calling MessageService.Produce.
+message ProduceResponse {
+
+}
+
+// The ConsumeRequest message is the request DTO when calling MessageService.Consume. It describes the topic to consume
+// from and the name of the consumer.
+message ConsumeRequest {
+  string topic = 1;
+  string consumer_id = 2;
+}
+
+// The ConsumeResponse message is the response DTO when streaming from MessageService.Consume. It contains a single
+// message consumed from the topic.
+message ConsumeResponse {
+  arrebato.message.v1.Message message = 1;
+}

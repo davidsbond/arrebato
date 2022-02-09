@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/service/v1;topicsvc";
+
+import "arrebato/topic/v1/topic.proto";
+
+// Package arrebato.topic.service.v1 provides the schema for the TopicService, which is used to manage topics within the
+// cluster.
+package arrebato.topic.service.v1;
+
+// The TopicService is a gRPC service that can manage topics within the cluster.
+service TopicService {
+  // Create a new topic. This RPC should return an ALREADY_EXISTS error code if the topic name is already in-use.
+  rpc Create(CreateRequest) returns (CreateResponse);
+  // Delete an existing topic. This RPC should return a NOT_FOUND error code if the topic does not exist.
+  rpc Delete(DeleteRequest) returns (DeleteResponse);
+  // Get information about an existing topic. This RPC should return a NOT_FOUND error code if the topic does not exist.
+  rpc Get(GetRequest) returns (GetResponse);
+  // List all topics.
+  rpc List(ListRequest) returns (ListResponse);
+}
+
+// The CreateRequest message is the request DTO when calling TopicService.Create. It describes the properties of a new
+// topic.
+message CreateRequest {
+  // The topic to create.
+  arrebato.topic.v1.Topic topic = 1;
+}
+
+// The CreateResponse message is the response DTO when calling TopicService.Create.
+message CreateResponse {
+
+}
+
+// The DeleteRequest message is the request DTO when calling TopicService.Delete. It describes the topic to be deleted.
+message DeleteRequest {
+  // The name of the topic to delete.
+  string name = 1;
+}
+
+// The DeleteResponse message is the response DTO when calling TopicService.Delete.
+message DeleteResponse {
+
+}
+
+// The GetRequest message is the request DTO when calling TopicService.Get. It describes the topic to get more information
+// about.
+message GetRequest {
+  // The name of the topic to describe.
+  string name = 1;
+}
+
+// The GetResponse message is the response DTO when calling TopicService.Get. It contains the topic details that were
+// initially requested.
+message GetResponse {
+  // The properties of the queried topic.
+  arrebato.topic.v1.Topic topic = 1;
+}
+
+message ListRequest {
+
+}
+
+message ListResponse {
+  repeated arrebato.topic.v1.Topic topics = 1;
+}

@@ -1,0 +1,5 @@
+/arrebato
+data/
+dist/
+/install.yaml
+*.sbom

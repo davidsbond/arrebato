@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/service/v1;consumersvc";
+
+import "arrebato/consumer/v1/consumer.proto";
+
+// Package arrebato.consumer.service.v1 provides the schema for the ConsumerService, which is used to manage the state
+// of topic consumers.
+package arrebato.consumer.service.v1;
+
+// The ConsumerService is a gRPC service that can manage the state of topic consumers.
+service ConsumerService {
+  // SetTopicIndex sets the current index of a consumer on a topic. This RPC should return a NOT_FOUND error code if the
+  // topic does not exist.
+  rpc SetTopicIndex(SetTopicIndexRequest) returns (SetTopicIndexResponse);
+}
+
+// The SetTopicIndexRequest message is the request DTO when calling ConsumerService.SetTopicIndex. It describes current
+// index of a consumer within a topic.
+message SetTopicIndexRequest {
+  arrebato.consumer.v1.TopicIndex topic_index = 1;
+}
+
+// The SetTopicIndexResponse message is the response DTO when calling ConsumerService.SetTopicIndex.
+message SetTopicIndexResponse {
+
+}

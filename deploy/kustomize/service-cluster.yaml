@@ -1,0 +1,17 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: arrebato-cluster
+spec:
+  clusterIP: None
+  selector:
+    app: arrebato
+  ports:
+    - port: 5000
+      targetPort: raft
+      protocol: TCP
+      name: raft
+    - port: 5001
+      targetPort: serf
+      protocol: TCP
+      name: serf

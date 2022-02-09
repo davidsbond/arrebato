@@ -1,0 +1,37 @@
+version: '3'
+services:
+  arrebato-0:
+    build:
+      context: .
+    restart: on-failure
+    command:
+      - --log-level=1
+    networks:
+      - default
+
+  arrebato-1:
+    build:
+      context: .
+    restart: on-failure
+    command:
+      - --log-level=1
+      - --peers=arrebato-0
+    depends_on:
+      - arrebato-0
+    networks:
+      - default
+
+  arrebato-2:
+    build:
+      context: .
+    restart: on-failure
+    command:
+      - --log-level=1
+      - --peers=arrebato-0
+    depends_on:
+      - arrebato-0
+    networks:
+      - default
+
+networks:
+  default: {}

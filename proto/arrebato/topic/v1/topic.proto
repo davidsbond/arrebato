@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/v1;topic";
+
+import "google/protobuf/duration.proto";
+
+// Package arrebato.topic.v1 provides domain models for topics.
+package arrebato.topic.v1;
+
+// The Topic message describes a single topic within the cluster.
+message Topic {
+  // The name of the topic.
+  string name = 1;
+  // The amount of time a message will exist on a topic until it is deleted.
+  google.protobuf.Duration message_retention_period = 2;
+  // The amount of time a consumer will exist on a topic without updating its index until it is deleted
+  google.protobuf.Duration consumer_retention_period = 3;
+}

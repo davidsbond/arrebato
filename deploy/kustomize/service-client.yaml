@@ -1,0 +1,12 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: arrebato-client
+spec:
+  selector:
+    app: arrebato
+  ports:
+    - port: 5002
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
