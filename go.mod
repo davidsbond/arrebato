@@ -3,7 +3,7 @@ module github.com/davidsbond/arrebato
 go 1.17
 
 require (
-	github.com/anchore/syft v0.41.1
+	github.com/anchore/syft v0.41.4
 	github.com/armon/go-metrics v0.3.10
 	github.com/bufbuild/buf v1.1.0
 	github.com/golangci/golangci-lint v1.44.2
@@ -51,7 +51,7 @@ require (
 	github.com/Azure/go-autorest/logger v0.2.1 // indirect
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/BurntSushi/toml v1.0.0 // indirect
-	github.com/CycloneDX/cyclonedx-go v0.4.0 // indirect
+	github.com/CycloneDX/cyclonedx-go v0.5.0 // indirect
 	github.com/Djarvur/go-err113 v0.0.0-20210108212216-aea10b59be24 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Microsoft/go-winio v0.5.1 // indirect
@@ -227,7 +227,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/raft-boltdb v0.0.0-20211202195631-7d34b9fb3f42 // indirect
-	github.com/hashicorp/vault/api v1.3.1 // indirect
+	github.com/hashicorp/vault/api v1.4.1 // indirect
 	github.com/hashicorp/vault/sdk v0.4.1 // indirect
 	github.com/hashicorp/yamux v0.0.0-20211028200310-0bc27b27de87 // indirect
 	github.com/hexops/gotextdiff v1.0.3 // indirect
