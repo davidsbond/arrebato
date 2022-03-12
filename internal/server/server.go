@@ -19,6 +19,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 
+	"github.com/davidsbond/arrebato/internal/acl"
 	"github.com/davidsbond/arrebato/internal/command"
 	"github.com/davidsbond/arrebato/internal/consumer"
 	"github.com/davidsbond/arrebato/internal/message"
@@ -36,6 +37,9 @@ type (
 		serfEvents <-chan serf.Event
 		store      *bbolt.DB
 		restore    chan struct{}
+
+		// Dependencies for ACLs
+		aclStore *acl.BoltStore
 
 		// Dependencies for Topics
 		topicStore   *topic.BoltStore
@@ -127,6 +131,8 @@ func New(config Config) (*Server, error) {
 
 	executor := command.NewExecutor(server.raft, config.Raft.Timeout)
 
+	server.aclStore = acl.NewBoltStore(server.store)
+
 	server.topicStore = topic.NewBoltStore(server.store)
 	server.topicHandler = topic.NewHandler(server.topicStore, server.logger)
 	server.topicGRPC = topic.NewGRPC(executor, server.topicStore)
@@ -137,7 +143,7 @@ func New(config Config) (*Server, error) {
 
 	server.messageStore = message.NewBoltStore(server.store)
 	server.messageHandler = message.NewHandler(server.messageStore, server.logger)
-	server.messageGRPC = message.NewGRPC(executor, server.messageStore, server.consumerStore)
+	server.messageGRPC = message.NewGRPC(executor, server.messageStore, server.consumerStore, server.aclStore)
 	server.pruner = prune.New(server.topicStore, server.messageStore, server.consumerStore, server.logger)
 
 	return server, nil

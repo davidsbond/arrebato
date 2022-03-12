@@ -26,12 +26,14 @@ func TestGRPC_Produce(t *testing.T) {
 	tt := []struct {
 		Name         string
 		Request      *messagesvc.ProduceRequest
+		ACLAllow     bool
 		ExpectedCode codes.Code
 		Error        error
 		Expected     command.Command
 	}{
 		{
-			Name: "It should execute a command to create a message",
+			Name:     "It should execute a command to create a message",
+			ACLAllow: true,
 			Request: &messagesvc.ProduceRequest{
 				Message: &messagepb.Message{
 					Topic:   "test-topic",
@@ -47,7 +49,8 @@ func TestGRPC_Produce(t *testing.T) {
 			}),
 		},
 		{
-			Name: "It should return a failed precondition if the node is not the leader",
+			Name:     "It should return a failed precondition if the node is not the leader",
+			ACLAllow: true,
 			Request: &messagesvc.ProduceRequest{
 				Message: &messagepb.Message{
 					Topic:   "test-topic",
@@ -58,7 +61,8 @@ func TestGRPC_Produce(t *testing.T) {
 			Error:        command.ErrNotLeader,
 		},
 		{
-			Name: "It should return not found if the topic does not exist",
+			Name:     "It should return not found if the topic does not exist",
+			ACLAllow: true,
 			Request: &messagesvc.ProduceRequest{
 				Message: &messagepb.Message{
 					Topic:   "test-topic",
@@ -68,16 +72,26 @@ func TestGRPC_Produce(t *testing.T) {
 			ExpectedCode: codes.NotFound,
 			Error:        message.ErrNoTopic,
 		},
+		{
+			Name: "It should return permission denied if the ACL does not allow producing",
+			Request: &messagesvc.ProduceRequest{
+				Message: &messagepb.Message{
+					Topic:   "test-topic",
+					Payload: testutil.Any(t, timestamppb.New(time.Time{})),
+				},
+			},
+			ExpectedCode: codes.PermissionDenied,
+		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
 			executor := &MockExecutor{err: tc.Error}
 
-			resp, err := message.NewGRPC(executor, nil, nil).Produce(ctx, tc.Request)
+			resp, err := message.NewGRPC(executor, nil, nil, &MockACL{allowed: tc.ACLAllow}).Produce(ctx, tc.Request)
 			require.EqualValues(t, tc.ExpectedCode, status.Code(err))
 
-			if tc.Error != nil {
+			if tc.Error != nil || tc.ExpectedCode > codes.OK {
 				assert.Error(t, err)
 				assert.Nil(t, resp)
 				return
@@ -100,13 +114,15 @@ func TestGRPC_Consume(t *testing.T) {
 	tt := []struct {
 		Name         string
 		Request      *messagesvc.ConsumeRequest
+		ACLAllow     bool
 		SeedTopic    []*messagepb.Message
 		ExpectedCode codes.Code
 		Expected     []*messagepb.Message
 		Error        error
 	}{
 		{
-			Name: "It should consume events from a valid topic",
+			Name:     "It should consume events from a valid topic",
+			ACLAllow: true,
 			Request: &messagesvc.ConsumeRequest{
 				Topic:      "test-topic",
 				ConsumerId: "test-consumer",
@@ -120,13 +136,22 @@ func TestGRPC_Consume(t *testing.T) {
 			ExpectedCode: codes.DeadlineExceeded,
 		},
 		{
-			Name: "It should return not found if the topic does not exist",
+			Name:     "It should return not found if the topic does not exist",
+			ACLAllow: true,
 			Request: &messagesvc.ConsumeRequest{
 				Topic:      "test-topic",
 				ConsumerId: "test-consumer",
 			},
 			Error:        message.ErrNoTopic,
 			ExpectedCode: codes.NotFound,
+		},
+		{
+			Name: "It should return permission denied if the ACL does not allow consuming",
+			Request: &messagesvc.ConsumeRequest{
+				Topic:      "test-topic",
+				ConsumerId: "test-consumer",
+			},
+			ExpectedCode: codes.PermissionDenied,
 		},
 	}
 
@@ -140,10 +165,10 @@ func TestGRPC_Consume(t *testing.T) {
 			reader := &MockReader{messages: tc.SeedTopic, err: tc.Error}
 			consumers := &MockTopicIndexGetter{}
 
-			err := message.NewGRPC(nil, reader, consumers).Consume(tc.Request, stream)
+			err := message.NewGRPC(nil, reader, consumers, &MockACL{allowed: tc.ACLAllow}).Consume(tc.Request, stream)
 			require.EqualValues(t, tc.ExpectedCode, status.Code(err))
 
-			if tc.Error != nil {
+			if tc.Error != nil || tc.ExpectedCode > codes.OK {
 				assert.Error(t, err)
 				return
 			}

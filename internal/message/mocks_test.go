@@ -5,6 +5,7 @@ import (
 
 	"github.com/davidsbond/arrebato/internal/command"
 	"github.com/davidsbond/arrebato/internal/message"
+	"github.com/davidsbond/arrebato/internal/proto/arrebato/acl/v1"
 	consumerpb "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/v1"
 	messagesvc "github.com/davidsbond/arrebato/internal/proto/arrebato/message/service/v1"
 	messabepb "github.com/davidsbond/arrebato/internal/proto/arrebato/message/v1"
@@ -35,7 +36,15 @@ type (
 	}
 
 	MockTopicIndexGetter struct{}
+
+	MockACL struct {
+		allowed bool
+	}
 )
+
+func (mm *MockACL) Allowed(ctx context.Context, topic, client string, permission acl.Permission) (bool, error) {
+	return mm.allowed, nil
+}
 
 func (mm *MockTopicIndexGetter) GetTopicIndex(ctx context.Context, topic string, consumerID string) (*consumerpb.TopicIndex, error) {
 	return &consumerpb.TopicIndex{

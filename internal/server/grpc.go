@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	"github.com/davidsbond/arrebato/internal/tlsinfo"
+	"github.com/davidsbond/arrebato/internal/clientinfo"
 
 	// Enable gzip compression from gRPC clients.
 	_ "google.golang.org/grpc/encoding/gzip"
@@ -40,17 +40,8 @@ func (svr *Server) serveGRPC(ctx context.Context) error {
 
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
-	unaryInterceptors := []grpc.UnaryServerInterceptor{
-		grpc_prometheus.UnaryServerInterceptor,
-		grpc_recovery.UnaryServerInterceptor(),
-	}
-
-	streamInterceptors := []grpc.StreamServerInterceptor{
-		grpc_prometheus.StreamServerInterceptor,
-		grpc_recovery.StreamServerInterceptor(),
-	}
-
 	var options []grpc.ServerOption
+	infoExtractor := clientinfo.MetadataExtractor
 
 	if svr.config.GRPC.tlsEnabled() {
 		creds, err := credentials.NewServerTLSFromFile(
@@ -62,13 +53,20 @@ func (svr *Server) serveGRPC(ctx context.Context) error {
 		}
 
 		options = append(options, grpc.Creds(creds))
-		unaryInterceptors = append(unaryInterceptors, tlsinfo.UnaryServerInterceptor())
-		streamInterceptors = append(streamInterceptors, tlsinfo.StreamServerInterceptor())
+		infoExtractor = clientinfo.TLSExtractor
 	}
 
 	options = append(options,
-		grpc.ChainUnaryInterceptor(unaryInterceptors...),
-		grpc.ChainStreamInterceptor(streamInterceptors...),
+		grpc.ChainUnaryInterceptor(
+			grpc_prometheus.UnaryServerInterceptor,
+			grpc_recovery.UnaryServerInterceptor(),
+			clientinfo.UnaryServerInterceptor(infoExtractor),
+		),
+		grpc.ChainStreamInterceptor(
+			grpc_prometheus.StreamServerInterceptor,
+			grpc_recovery.StreamServerInterceptor(),
+			clientinfo.StreamServerInterceptor(infoExtractor),
+		),
 	)
 
 	server := grpc.NewServer(options...)

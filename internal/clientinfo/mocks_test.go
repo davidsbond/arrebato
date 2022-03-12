@@ -1,4 +1,4 @@
-package tlsinfo_test
+package clientinfo_test
 
 import (
 	"context"

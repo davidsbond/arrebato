@@ -13,8 +13,10 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/davidsbond/arrebato/internal/clientinfo"
 	"github.com/davidsbond/arrebato/internal/command"
 	"github.com/davidsbond/arrebato/internal/consumer"
+	"github.com/davidsbond/arrebato/internal/proto/arrebato/acl/v1"
 	consumerpb "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/v1"
 	messagecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/message/command/v1"
 	messagesvc "github.com/davidsbond/arrebato/internal/proto/arrebato/message/service/v1"
@@ -28,6 +30,7 @@ type (
 		executor  Executor
 		reader    Reader
 		consumers TopicIndexGetter
+		acl       ACL
 	}
 
 	// The Executor interface describes types that execute commands related to Message data.
@@ -51,12 +54,20 @@ type (
 		// read to. It should return ErrNoTopic if the topic does not exist.
 		GetTopicIndex(ctx context.Context, topic string, consumerID string) (*consumerpb.TopicIndex, error)
 	}
+
+	// The ACL interface describes types that act as an access-control list to determine what clients are permitted
+	// to do on certain topics.
+	ACL interface {
+		// Allowed should return true if the client has the given permission on a topic. If no ACL has been set up
+		// within the server then it should always return true.
+		Allowed(ctx context.Context, topic, client string, permission acl.Permission) (bool, error)
+	}
 )
 
 // NewGRPC returns a new instance of the GRPC type that will modify Message data via commands sent to the Executor and
 // read messages via the Reader implementation.
-func NewGRPC(executor Executor, reader Reader, consumers TopicIndexGetter) *GRPC {
-	return &GRPC{executor: executor, reader: reader, consumers: consumers}
+func NewGRPC(executor Executor, reader Reader, consumers TopicIndexGetter, acl ACL) *GRPC {
+	return &GRPC{executor: executor, reader: reader, consumers: consumers, acl: acl}
 }
 
 // Register the GRPC service onto the grpc.ServiceRegistrar.
@@ -66,6 +77,14 @@ func (svr *GRPC) Register(registrar grpc.ServiceRegistrar) {
 
 // Produce a new message for a topic. Returns a codes.NotFound code if the topic does not exist.
 func (svr *GRPC) Produce(ctx context.Context, request *messagesvc.ProduceRequest) (*messagesvc.ProduceResponse, error) {
+	allowed, err := svr.canProduce(ctx, request.GetMessage().GetTopic())
+	switch {
+	case err != nil:
+		return nil, status.Errorf(codes.Internal, "failed to check ACL: %v", err)
+	case !allowed:
+		return nil, status.Errorf(codes.PermissionDenied, "cannot produce messages on topic %s", request.GetMessage().GetTopic())
+	}
+
 	cmd := command.New(&messagecmd.CreateMessage{
 		Message: &message.Message{
 			Topic:     request.GetMessage().GetTopic(),
@@ -74,7 +93,7 @@ func (svr *GRPC) Produce(ctx context.Context, request *messagesvc.ProduceRequest
 		},
 	})
 
-	err := svr.executor.Execute(ctx, cmd)
+	err = svr.executor.Execute(ctx, cmd)
 	switch {
 	case errors.Is(err, command.ErrNotLeader):
 		return nil, status.Error(codes.FailedPrecondition, "this node is not the leader")
@@ -90,6 +109,14 @@ func (svr *GRPC) Produce(ctx context.Context, request *messagesvc.ProduceRequest
 // Consume messages from a topic. Returns a codes.NotFound code if the topic does not exist.
 func (svr *GRPC) Consume(request *messagesvc.ConsumeRequest, server messagesvc.MessageService_ConsumeServer) error {
 	ctx := server.Context()
+
+	allowed, err := svr.canConsume(ctx, request.GetTopic())
+	switch {
+	case err != nil:
+		return status.Errorf(codes.Internal, "failed to check ACL: %v", err)
+	case !allowed:
+		return status.Errorf(codes.PermissionDenied, "cannot consume messages on topic %s", request.GetTopic())
+	}
 
 	topicIndex, err := svr.consumers.GetTopicIndex(ctx,
 		request.GetTopic(),
@@ -119,7 +146,7 @@ func (svr *GRPC) Consume(request *messagesvc.ConsumeRequest, server messagesvc.M
 			err := svr.reader.Read(ctx, request.GetTopic(), topicIndex.GetIndex(), func(ctx context.Context, m *message.Message) error {
 				resp := &messagesvc.ConsumeResponse{Message: m}
 
-				if err := server.Send(resp); err != nil {
+				if err = server.Send(resp); err != nil {
 					return fmt.Errorf("failed to send message: %w", err)
 				}
 
@@ -140,4 +167,22 @@ func (svr *GRPC) Consume(request *messagesvc.ConsumeRequest, server messagesvc.M
 			}
 		}
 	}
+}
+
+func (svr *GRPC) canConsume(ctx context.Context, topic string) (bool, error) {
+	info := clientinfo.FromContext(ctx)
+	return svr.acl.Allowed(ctx,
+		topic,
+		info.ID,
+		acl.Permission_PERMISSION_CONSUME,
+	)
+}
+
+func (svr *GRPC) canProduce(ctx context.Context, topic string) (bool, error) {
+	info := clientinfo.FromContext(ctx)
+	return svr.acl.Allowed(ctx,
+		topic,
+		info.ID,
+		acl.Permission_PERMISSION_PRODUCE,
+	)
 }
