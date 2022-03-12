@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/acl/service/v1;aclsvc";
+
+import "arrebato/acl/v1/acl.proto";
+
+// Package arrebato.acl.service.v1 provides the schema for the ACLService, which is used to manage acls within the
+// cluster.
+package arrebato.acl.service.v1;
+
+// The ACLService is a gRPC service that can manage acls within the cluster.
+service ACLService {
+  // Set the ACL for the server.
+  rpc Set(SetRequest) returns (SetResponse);
+  // Get the ACL for the server. This RPC should return a NOT_FOUND error code if no ACL has been set.
+  rpc Get(GetRequest) returns (GetResponse);
+}
+
+// The SetRequest message is the request DTO when calling ACLService.Set. It contains the access-control list to apply
+// to the server.
+message SetRequest {
+  arrebato.acl.v1.ACL acl = 1;
+}
+
+// The SetResponse message is the response DTO when calling ACLService.Set.
+message SetResponse {
+
+}
+
+// The GetRequest message is the request DTO when calling ACLService.Get.
+message GetRequest {
+
+}
+
+// The GetResponse message is the response DTO when calling ACLService.Get. It contains the acl details.
+message GetResponse {
+  // The access-control list for the server.
+  arrebato.acl.v1.ACL acl = 1;
+}
