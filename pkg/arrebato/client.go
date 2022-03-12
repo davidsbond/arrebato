@@ -6,11 +6,9 @@ import (
 	"context"
 	"crypto/tls"
 
-	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/metadata"
 
 	// Enable gzip compression for gRPC clients.
 	_ "google.golang.org/grpc/encoding/gzip"
@@ -32,17 +30,15 @@ type (
 
 	// The Config type describes configuration values used by a Client.
 	Config struct {
-		Address  string
-		TLS      *tls.Config
-		ClientID string
+		Address string
+		TLS     *tls.Config
 	}
 )
 
 // DefaultConfig returns a Config instance with sane values for a Client's connection.
 func DefaultConfig(addr string) Config {
 	return Config{
-		Address:  addr,
-		ClientID: uuid.New().String(),
+		Address: addr,
 	}
 }
 
@@ -52,12 +48,6 @@ func Dial(ctx context.Context, config Config) (*Client, error) {
 		grpc.WithBlock(),
 		grpc.WithDefaultCallOptions(
 			grpc.UseCompressor("gzip"),
-		),
-		grpc.WithChainUnaryInterceptor(
-			unaryClientInterceptor(config.ClientID),
-		),
-		grpc.WithChainStreamInterceptor(
-			streamClientInterceptor(config.ClientID),
 		),
 	}
 
@@ -84,20 +74,4 @@ func Dial(ctx context.Context, config Config) (*Client, error) {
 // Close the connection to the cluster.
 func (c *Client) Close() error {
 	return c.conn.Close()
-}
-
-func unaryClientInterceptor(clientID string) grpc.UnaryClientInterceptor {
-	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-		ctx = metadata.AppendToOutgoingContext(ctx, "client_id", clientID)
-
-		return invoker(ctx, method, req, reply, cc, opts...)
-	}
-}
-
-func streamClientInterceptor(clientID string) grpc.StreamClientInterceptor {
-	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
-		ctx = metadata.AppendToOutgoingContext(ctx, "client_id", clientID)
-
-		return streamer(ctx, desc, cc, method, opts...)
-	}
 }

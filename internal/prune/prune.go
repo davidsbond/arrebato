@@ -6,12 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-
 	"github.com/armon/go-metrics"
-
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/davidsbond/arrebato/internal/proto/arrebato/topic/v1"
 )

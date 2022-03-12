@@ -3,10 +3,9 @@ package e2e_test
 import (
 	"time"
 
-	"github.com/stretchr/testify/suite"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/davidsbond/arrebato/internal/testutil"
 	"github.com/davidsbond/arrebato/pkg/arrebato"

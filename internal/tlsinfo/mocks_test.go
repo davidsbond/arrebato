@@ -1,4 +1,4 @@
-package clientinfo_test
+package tlsinfo_test
 
 import (
 	"context"
@@ -14,6 +14,6 @@ type (
 	}
 )
 
-func (m *MockServerStream) Context() context.Context {
+func (m MockServerStream) Context() context.Context {
 	return m.ctx
 }

@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	"github.com/davidsbond/arrebato/internal/clientinfo"
+	"github.com/davidsbond/arrebato/internal/tlsinfo"
 
 	// Enable gzip compression from gRPC clients.
 	_ "google.golang.org/grpc/encoding/gzip"
@@ -43,13 +43,11 @@ func (svr *Server) serveGRPC(ctx context.Context) error {
 	unaryInterceptors := []grpc.UnaryServerInterceptor{
 		grpc_prometheus.UnaryServerInterceptor,
 		grpc_recovery.UnaryServerInterceptor(),
-		clientinfo.UnaryServerInterceptor(),
 	}
 
 	streamInterceptors := []grpc.StreamServerInterceptor{
 		grpc_prometheus.StreamServerInterceptor,
 		grpc_recovery.StreamServerInterceptor(),
-		clientinfo.StreamServerInterceptor(),
 	}
 
 	var options []grpc.ServerOption
@@ -64,6 +62,8 @@ func (svr *Server) serveGRPC(ctx context.Context) error {
 		}
 
 		options = append(options, grpc.Creds(creds))
+		unaryInterceptors = append(unaryInterceptors, tlsinfo.UnaryServerInterceptor())
+		streamInterceptors = append(streamInterceptors, tlsinfo.StreamServerInterceptor())
 	}
 
 	options = append(options,
