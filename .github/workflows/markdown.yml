@@ -1,0 +1,20 @@
+name: markdown
+on:
+  push:
+    paths:
+      - '**.md'
+    branches:
+      - master
+  pull_request:
+    paths:
+      - '**.md'
+
+jobs:
+  lint:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Lint
+        uses: actionshub/markdownlint@2.0.2
