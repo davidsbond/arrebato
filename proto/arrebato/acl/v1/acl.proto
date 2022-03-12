@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/acl/v1;acl";
+
+// Package arrebato.acl.v1 provides messages that describe access-control lists (ACLs) for clients wishing to consume
+// and produce messages on individual topics.
+package arrebato.acl.v1;
+
+// The ACL message describes the entire state of the access-control list.
+message ACL {
+  // The permissions for each client/topic pair.
+  repeated Entry entries = 1;
+}
+
+// The Entry message describes a single set of permissions applied to a client
+// for a topic.
+message Entry {
+  string topic = 1;
+  string client = 2;
+  repeated Permission permissions = 3;
+}
+
+// The Permission enumeration represents individual permissions a client may have on
+// a topic.
+enum Permission {
+  // The default permission value, using this should always result in an error.
+  PERMISSION_UNSPECIFIED = 0;
+  // The client may produce messages on the topic.
+  PERMISSION_PRODUCE = 1;
+  // The client may consume messages from the topic.
+  PERMISSION_CONSUME = 2;
+}
