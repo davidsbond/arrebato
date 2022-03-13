@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/acl/command/v1;aclcmd";
+
+import "arrebato/acl/v1/acl.proto";
+
+// Package arrebato.acl.command.v1 provides commands written to the raft log regarding acl state.
+// These messages are used internally by nodes in the cluster to portray changes from the leader node to all followers.
+package arrebato.acl.command.v1;
+
+// The SetACL message is a command indicating that the server's ACL has changed.
+message SetACL {
+  // The new ACL state.
+  arrebato.acl.v1.ACL acl = 1;
+}

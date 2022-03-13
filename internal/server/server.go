@@ -37,9 +37,12 @@ type (
 		serfEvents <-chan serf.Event
 		store      *bbolt.DB
 		restore    chan struct{}
+		pruner     *prune.Pruner
 
 		// Dependencies for ACLs
-		aclStore *acl.BoltStore
+		aclStore   *acl.BoltStore
+		aclHandler *acl.Handler
+		aclGRPC    *acl.GRPC
 
 		// Dependencies for Topics
 		topicStore   *topic.BoltStore
@@ -50,7 +53,6 @@ type (
 		messageStore   *message.BoltStore
 		messageHandler *message.Handler
 		messageGRPC    *message.GRPC
-		pruner         *prune.Pruner
 
 		// Dependencies for Consumers
 		consumerStore   *consumer.BoltStore
@@ -131,19 +133,27 @@ func New(config Config) (*Server, error) {
 
 	executor := command.NewExecutor(server.raft, config.Raft.Timeout)
 
+	// ACL stack
 	server.aclStore = acl.NewBoltStore(server.store)
+	server.aclHandler = acl.NewHandler(server.aclStore, server.logger)
+	server.aclGRPC = acl.NewGRPC(executor, server.aclStore)
 
+	// Topic stack
 	server.topicStore = topic.NewBoltStore(server.store)
 	server.topicHandler = topic.NewHandler(server.topicStore, server.logger)
 	server.topicGRPC = topic.NewGRPC(executor, server.topicStore)
 
+	// Consumer stack
 	server.consumerStore = consumer.NewBoltStore(server.store)
 	server.consumerHandler = consumer.NewHandler(server.consumerStore, server.logger)
 	server.consumerGRPC = consumer.NewGRPC(executor)
 
+	// Message stack
 	server.messageStore = message.NewBoltStore(server.store)
 	server.messageHandler = message.NewHandler(server.messageStore, server.logger)
 	server.messageGRPC = message.NewGRPC(executor, server.messageStore, server.consumerStore, server.aclStore)
+
+	// Pruning stack
 	server.pruner = prune.New(server.topicStore, server.messageStore, server.consumerStore, server.logger)
 
 	return server, nil

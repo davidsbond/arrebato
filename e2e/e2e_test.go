@@ -65,7 +65,10 @@ func (s *Suite) SetupSuite() {
 	}, time.Minute, time.Second)
 
 	s.cancel = cancel
-	s.client, err = arrebato.Dial(ctx, arrebato.DefaultConfig(":5002"))
+	s.client, err = arrebato.Dial(ctx, arrebato.Config{
+		Address:  ":5002",
+		ClientID: "test-client",
+	})
 
 	require.NoError(s.T(), err)
 }
@@ -86,6 +89,9 @@ func (s *Suite) TestSuite() {
 			client: s.client,
 		},
 		&MessageSuite{
+			client: s.client,
+		},
+		&ACLSuite{
 			client: s.client,
 		},
 		// Keep the SnapshotSuite last as it requires stopping and restarting the

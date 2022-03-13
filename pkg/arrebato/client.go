@@ -15,6 +15,7 @@ import (
 	// Enable gzip compression for gRPC clients.
 	_ "google.golang.org/grpc/encoding/gzip"
 
+	aclsvc "github.com/davidsbond/arrebato/internal/proto/arrebato/acl/service/v1"
 	consumersvc "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/service/v1"
 	messagesvc "github.com/davidsbond/arrebato/internal/proto/arrebato/message/service/v1"
 	topicsvc "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/service/v1"
@@ -28,6 +29,7 @@ type (
 		topics    topicsvc.TopicServiceClient
 		messages  messagesvc.MessageServiceClient
 		consumers consumersvc.ConsumerServiceClient
+		acl       aclsvc.ACLServiceClient
 	}
 
 	// The Config type describes configuration values used by a Client.
@@ -77,6 +79,7 @@ func Dial(ctx context.Context, config Config) (*Client, error) {
 		topics:    topicsvc.NewTopicServiceClient(conn),
 		messages:  messagesvc.NewMessageServiceClient(conn),
 		consumers: consumersvc.NewConsumerServiceClient(conn),
+		acl:       aclsvc.NewACLServiceClient(conn),
 		config:    config,
 	}, nil
 }

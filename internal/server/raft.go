@@ -16,6 +16,7 @@ import (
 	raftboltdb "github.com/hashicorp/raft-boltdb/v2"
 
 	"github.com/davidsbond/arrebato/internal/command"
+	aclcmd "github.com/davidsbond/arrebato/internal/proto/arrebato/acl/command/v1"
 	consumercmd "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/command/v1"
 	messagecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/message/command/v1"
 	topiccmd "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/command/v1"
@@ -202,6 +203,8 @@ func (svr *Server) Apply(log *raft.Log) interface{} {
 		return svr.messageHandler.Create(ctx, payload)
 	case *consumercmd.SetTopicIndex:
 		return svr.consumerHandler.SetTopicIndex(ctx, payload)
+	case *aclcmd.SetACL:
+		return svr.aclHandler.SetACL(ctx, payload)
 	default:
 		return nil
 	}

@@ -2,6 +2,7 @@ package acl
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"go.etcd.io/bbolt"
@@ -16,6 +17,9 @@ type (
 		db *bbolt.DB
 	}
 )
+
+// ErrNoACL is the error given when querying the server's ACL before one has been initially created.
+var ErrNoACL = errors.New("no acl")
 
 // NewBoltStore returns a new instance of the BoltStore type that will manage/query ACL data in a boltdb database.
 func NewBoltStore(db *bbolt.DB) *BoltStore {
@@ -42,6 +46,30 @@ func (bs *BoltStore) Set(_ context.Context, a *acl.ACL) error {
 
 		return topics.Put([]byte(aclKey), value)
 	})
+}
+
+// Get the ACL from the store.
+func (bs *BoltStore) Get(_ context.Context) (*acl.ACL, error) {
+	var a acl.ACL
+	err := bs.db.View(func(tx *bbolt.Tx) error {
+		topics := tx.Bucket([]byte(topicsKey))
+		if topics == nil {
+			return ErrNoACL
+		}
+
+		value := topics.Get([]byte(aclKey))
+		if value == nil {
+			return ErrNoACL
+		}
+
+		if err := proto.Unmarshal(value, &a); err != nil {
+			return fmt.Errorf("failed to unmarshal acl: %w", err)
+		}
+
+		return nil
+	})
+
+	return &a, err
 }
 
 // Allowed returns a boolean value indicating if the client has the given permission on a topic. This method returns true
