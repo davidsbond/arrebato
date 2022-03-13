@@ -2,7 +2,10 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"net"
 
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
@@ -28,6 +31,9 @@ type (
 
 		// Location of the TLS Key file to use for transport credentials.
 		TLSKeyFile string
+
+		// The certificate of the CA that signs client certificates.
+		TLSCAFile string
 	}
 )
 
@@ -44,15 +50,27 @@ func (svr *Server) serveGRPC(ctx context.Context) error {
 	infoExtractor := clientinfo.MetadataExtractor
 
 	if svr.config.GRPC.tlsEnabled() {
-		creds, err := credentials.NewServerTLSFromFile(
-			svr.config.GRPC.TLSCertFile,
-			svr.config.GRPC.TLSKeyFile,
-		)
+		ca, err := ioutil.ReadFile(svr.config.GRPC.TLSCAFile)
+		if err != nil {
+			return fmt.Errorf("failed to read CA file: %w", err)
+		}
+
+		certPool := x509.NewCertPool()
+		certPool.AppendCertsFromPEM(ca)
+
+		cert, err := tls.LoadX509KeyPair(svr.config.GRPC.TLSCertFile, svr.config.GRPC.TLSKeyFile)
 		if err != nil {
 			return fmt.Errorf("failed to load TLS files: %w", err)
 		}
 
-		options = append(options, grpc.Creds(creds))
+		config := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			ClientAuth:   tls.RequireAndVerifyClientCert,
+			ClientCAs:    certPool,
+			MinVersion:   tls.VersionTLS12,
+		}
+
+		options = append(options, grpc.Creds(credentials.NewTLS(config)))
 		infoExtractor = clientinfo.TLSExtractor
 	}
 

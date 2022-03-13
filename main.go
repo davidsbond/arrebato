@@ -66,6 +66,7 @@ func main() {
 	flags.IntVar(&config.GRPC.Port, "grpc-port", 5002, "The port to use for gRPC transport")
 	flags.StringVar(&config.GRPC.TLSCertFile, "grpc-tls-cert", "", "The location of the TLS cert file for the server to use")
 	flags.StringVar(&config.GRPC.TLSKeyFile, "grpc-tls-key", "", "The location of the TLS key file for the server to use")
+	flags.StringVar(&config.GRPC.TLSCAFile, "grpc-tls-ca", "", "The location of the CA certificate that signs client certificates")
 
 	// Prometheus configuration
 	flags.IntVar(&config.Metrics.Port, "metrics-port", 5003, "The port to use for serving metrics")
