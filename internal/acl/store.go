@@ -1,5 +1,3 @@
-// Package acl provides all functionality within arrebato regarding access-control lists. This includes both gRPC, raft
-// and data store interactions.
 package acl
 
 import (
