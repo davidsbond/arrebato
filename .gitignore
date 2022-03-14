@@ -3,3 +3,5 @@ data/
 dist/
 /install.yaml
 *.sbom
+*.pem
+*.srl

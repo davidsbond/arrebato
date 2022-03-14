@@ -67,7 +67,7 @@ func (svr *Server) serveGRPC(ctx context.Context) error {
 			Certificates: []tls.Certificate{cert},
 			ClientAuth:   tls.RequireAndVerifyClientCert,
 			ClientCAs:    certPool,
-			MinVersion:   tls.VersionTLS12,
+			MinVersion:   tls.VersionTLS13,
 		}
 
 		options = append(options, grpc.Creds(credentials.NewTLS(config)))
