@@ -67,16 +67,23 @@ func (a ACL) toProto() *acl.ACL {
 
 // SetACL updates the server's ACL.
 func (c *Client) SetACL(ctx context.Context, acl ACL) error {
-	_, err := c.acl.Set(ctx, &aclsvc.SetRequest{
+	svc := aclsvc.NewACLServiceClient(c.cluster.leader())
+	_, err := svc.Set(ctx, &aclsvc.SetRequest{
 		Acl: acl.toProto(),
 	})
-
-	return err
+	switch {
+	case status.Code(err) == codes.FailedPrecondition:
+		c.cluster.findLeader(ctx)
+		return c.SetACL(ctx, acl)
+	default:
+		return err
+	}
 }
 
 // ACL returns the server's ACL. Returns ErrNoACL if an ACL has not been created.
 func (c *Client) ACL(ctx context.Context) (ACL, error) {
-	resp, err := c.acl.Get(ctx, &aclsvc.GetRequest{})
+	svc := aclsvc.NewACLServiceClient(c.cluster.any())
+	resp, err := svc.Get(ctx, &aclsvc.GetRequest{})
 	switch {
 	case status.Code(err) == codes.NotFound:
 		return ACL{}, ErrNoACL

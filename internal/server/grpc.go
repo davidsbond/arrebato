@@ -93,6 +93,7 @@ func (svr *Server) serveGRPC(ctx context.Context) error {
 	svr.messageGRPC.Register(server)
 	svr.topicGRPC.Register(server)
 	svr.aclGRPC.Register(server)
+	svr.nodeGRPC.Register(server)
 
 	grp, ctx := errgroup.WithContext(ctx)
 	grp.Go(func() error {

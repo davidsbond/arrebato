@@ -185,12 +185,12 @@ func TestGRPC_Get(t *testing.T) {
 			ExpectedCode: codes.NotFound,
 		},
 		{
-			Name: "It should return failed precondition for incomplete topic info",
+			Name: "It should return invalid argument for incomplete topic info",
 			Request: &topicsvc.GetRequest{
 				Name: "test-topic",
 			},
 			Error:        topic.ErrNoTopicInfo,
-			ExpectedCode: codes.FailedPrecondition,
+			ExpectedCode: codes.InvalidArgument,
 		},
 	}
 

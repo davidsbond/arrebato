@@ -38,7 +38,8 @@ var (
 // CreateTopic creates a new topic described by the provided Topic. Returns ErrTopicExists if the topic already
 // exists.
 func (c *Client) CreateTopic(ctx context.Context, t Topic) error {
-	_, err := c.topics.Create(ctx, &topicsvc.CreateRequest{
+	svc := topicsvc.NewTopicServiceClient(c.cluster.leader())
+	_, err := svc.Create(ctx, &topicsvc.CreateRequest{
 		Topic: &topic.Topic{
 			Name:                    t.Name,
 			MessageRetentionPeriod:  durationpb.New(t.MessageRetentionPeriod),
@@ -48,6 +49,9 @@ func (c *Client) CreateTopic(ctx context.Context, t Topic) error {
 	switch {
 	case status.Code(err) == codes.AlreadyExists:
 		return ErrTopicExists
+	case status.Code(err) == codes.FailedPrecondition:
+		c.cluster.findLeader(ctx)
+		return c.CreateTopic(ctx, t)
 	case err != nil:
 		return err
 	default:
@@ -57,7 +61,8 @@ func (c *Client) CreateTopic(ctx context.Context, t Topic) error {
 
 // Topic returns a named Topic. Returns ErrNoTopic if the topic does not exist.
 func (c *Client) Topic(ctx context.Context, name string) (Topic, error) {
-	resp, err := c.topics.Get(ctx, &topicsvc.GetRequest{
+	svc := topicsvc.NewTopicServiceClient(c.cluster.any())
+	resp, err := svc.Get(ctx, &topicsvc.GetRequest{
 		Name: name,
 	})
 	switch {
@@ -76,7 +81,8 @@ func (c *Client) Topic(ctx context.Context, name string) (Topic, error) {
 
 // Topics lists all topics stored in the cluster.
 func (c *Client) Topics(ctx context.Context) ([]Topic, error) {
-	resp, err := c.topics.List(ctx, &topicsvc.ListRequest{})
+	svc := topicsvc.NewTopicServiceClient(c.cluster.any())
+	resp, err := svc.List(ctx, &topicsvc.ListRequest{})
 	if err != nil {
 		return nil, err
 	}
@@ -95,13 +101,17 @@ func (c *Client) Topics(ctx context.Context) ([]Topic, error) {
 
 // DeleteTopic removes a named Topic from the cluster. Returns ErrNoTopic if the topic does not exist.
 func (c *Client) DeleteTopic(ctx context.Context, name string) error {
-	_, err := c.topics.Delete(ctx, &topicsvc.DeleteRequest{
+	svc := topicsvc.NewTopicServiceClient(c.cluster.leader())
+	_, err := svc.Delete(ctx, &topicsvc.DeleteRequest{
 		Name: name,
 	})
 
 	switch {
 	case status.Code(err) == codes.NotFound:
 		return ErrNoTopic
+	case status.Code(err) == codes.FailedPrecondition:
+		c.cluster.findLeader(ctx)
+		return c.DeleteTopic(ctx, name)
 	case err != nil:
 		return err
 	default:

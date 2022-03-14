@@ -66,7 +66,9 @@ func (s *Suite) SetupSuite() {
 
 	s.cancel = cancel
 	s.client, err = arrebato.Dial(ctx, arrebato.Config{
-		Address:  ":5002",
+		Addresses: []string{
+			":5002",
+		},
 		ClientID: "test-client",
 	})
 

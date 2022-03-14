@@ -23,6 +23,7 @@ import (
 	"github.com/davidsbond/arrebato/internal/command"
 	"github.com/davidsbond/arrebato/internal/consumer"
 	"github.com/davidsbond/arrebato/internal/message"
+	"github.com/davidsbond/arrebato/internal/node"
 	"github.com/davidsbond/arrebato/internal/prune"
 	"github.com/davidsbond/arrebato/internal/topic"
 )
@@ -58,6 +59,9 @@ type (
 		consumerStore   *consumer.BoltStore
 		consumerHandler *consumer.Handler
 		consumerGRPC    *consumer.GRPC
+
+		// Dependencies for Nodes
+		nodeGRPC *node.GRPC
 	}
 
 	// The Config type contains configuration values for the Server.
@@ -132,6 +136,9 @@ func New(config Config) (*Server, error) {
 	}
 
 	executor := command.NewExecutor(server.raft, config.Raft.Timeout)
+
+	// Node stack
+	server.nodeGRPC = node.NewGRPC(server.raft)
 
 	// ACL stack
 	server.aclStore = acl.NewBoltStore(server.store)

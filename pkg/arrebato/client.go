@@ -14,37 +14,28 @@ import (
 
 	// Enable gzip compression for gRPC clients.
 	_ "google.golang.org/grpc/encoding/gzip"
-
-	aclsvc "github.com/davidsbond/arrebato/internal/proto/arrebato/acl/service/v1"
-	consumersvc "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/service/v1"
-	messagesvc "github.com/davidsbond/arrebato/internal/proto/arrebato/message/service/v1"
-	topicsvc "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/service/v1"
 )
 
 type (
 	// The Client type is used to interact with an arrebato cluster.
 	Client struct {
-		conn      *grpc.ClientConn
-		config    Config
-		topics    topicsvc.TopicServiceClient
-		messages  messagesvc.MessageServiceClient
-		consumers consumersvc.ConsumerServiceClient
-		acl       aclsvc.ACLServiceClient
+		cluster *cluster
+		config  Config
 	}
 
 	// The Config type describes configuration values used by a Client.
 	Config struct {
-		Address  string
-		TLS      *tls.Config
-		ClientID string
+		Addresses []string
+		TLS       *tls.Config
+		ClientID  string
 	}
 )
 
 // DefaultConfig returns a Config instance with sane values for a Client's connection.
-func DefaultConfig(addr string) Config {
+func DefaultConfig(addrs []string) Config {
 	return Config{
-		Address:  addr,
-		ClientID: uuid.New().String(),
+		Addresses: addrs,
+		ClientID:  uuid.New().String(),
 	}
 }
 
@@ -69,24 +60,27 @@ func Dial(ctx context.Context, config Config) (*Client, error) {
 		options = append(options, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
-	conn, err := grpc.DialContext(ctx, config.Address, options...)
-	if err != nil {
-		return nil, err
+	connections := make([]*grpc.ClientConn, len(config.Addresses))
+	for i, address := range config.Addresses {
+		conn, err := grpc.DialContext(ctx, address, options...)
+		if err != nil {
+			return nil, err
+		}
+
+		connections[i] = conn
 	}
 
+	cl := newCluster(ctx, connections)
+
 	return &Client{
-		conn:      conn,
-		topics:    topicsvc.NewTopicServiceClient(conn),
-		messages:  messagesvc.NewMessageServiceClient(conn),
-		consumers: consumersvc.NewConsumerServiceClient(conn),
-		acl:       aclsvc.NewACLServiceClient(conn),
-		config:    config,
+		cluster: cl,
+		config:  config,
 	}, nil
 }
 
 // Close the connection to the cluster.
 func (c *Client) Close() error {
-	return c.conn.Close()
+	return c.cluster.Close()
 }
 
 func unaryClientInterceptor(clientID string) grpc.UnaryClientInterceptor {

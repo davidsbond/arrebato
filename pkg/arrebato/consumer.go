@@ -15,10 +15,9 @@ import (
 type (
 	// The Consumer type is used to read messages for a single topic.
 	Consumer struct {
-		config ConsumerConfig
-
-		stream    messagesvc.MessageService_ConsumeClient
-		consumers consumersvc.ConsumerServiceClient
+		config  ConsumerConfig
+		stream  messagesvc.MessageService_ConsumeClient
+		cluster *cluster
 	}
 
 	// The ConsumerFunc is a function invoked for each message consumed by a Consumer.
@@ -34,7 +33,8 @@ type (
 // NewConsumer returns a new instance of the Consumer type configured to read from a desired topic as a desired
 // consumer identifier.
 func (c *Client) NewConsumer(ctx context.Context, config ConsumerConfig) (*Consumer, error) {
-	stream, err := c.messages.Consume(ctx, &messagesvc.ConsumeRequest{
+	svc := messagesvc.NewMessageServiceClient(c.cluster.any())
+	stream, err := svc.Consume(ctx, &messagesvc.ConsumeRequest{
 		Topic:      config.Topic,
 		ConsumerId: config.ConsumerID,
 	})
@@ -43,9 +43,9 @@ func (c *Client) NewConsumer(ctx context.Context, config ConsumerConfig) (*Consu
 	}
 
 	return &Consumer{
-		config:    config,
-		stream:    stream,
-		consumers: c.consumers,
+		config:  config,
+		stream:  stream,
+		cluster: c.cluster,
 	}, nil
 }
 
@@ -85,7 +85,8 @@ func (c *Consumer) Consume(ctx context.Context, fn ConsumerFunc) error {
 				},
 			}
 
-			if _, err := c.consumers.SetTopicIndex(ctx, req); err != nil {
+			svc := consumersvc.NewConsumerServiceClient(c.cluster.leader())
+			if _, err := svc.SetTopicIndex(ctx, req); err != nil {
 				return fmt.Errorf("failed to update topic index: %w", err)
 			}
 		default:

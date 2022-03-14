@@ -3,14 +3,17 @@ package arrebato
 import (
 	"context"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	messagesvc "github.com/davidsbond/arrebato/internal/proto/arrebato/message/service/v1"
 )
 
 type (
 	// The Producer type is responsible for publishing messages onto a single topic.
 	Producer struct {
-		topic    string
-		messages messagesvc.MessageServiceClient
+		topic   string
+		cluster *cluster
 	}
 )
 
@@ -18,8 +21,8 @@ type (
 // topic.
 func (c *Client) NewProducer(topic string) *Producer {
 	return &Producer{
-		topic:    topic,
-		messages: c.messages,
+		topic:   topic,
+		cluster: c.cluster,
 	}
 }
 
@@ -31,9 +34,16 @@ func (p *Producer) Produce(ctx context.Context, m Message) error {
 	}
 
 	msg.Topic = p.topic
-	_, err = p.messages.Produce(ctx, &messagesvc.ProduceRequest{
+
+	svc := messagesvc.NewMessageServiceClient(p.cluster.leader())
+	_, err = svc.Produce(ctx, &messagesvc.ProduceRequest{
 		Message: msg,
 	})
-
-	return err
+	switch {
+	case status.Code(err) == codes.FailedPrecondition:
+		p.cluster.findLeader(ctx)
+		return p.Produce(ctx, m)
+	default:
+		return err
+	}
 }

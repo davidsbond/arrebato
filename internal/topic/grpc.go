@@ -93,7 +93,7 @@ func (svr *GRPC) Delete(ctx context.Context, request *topicsvc.DeleteRequest) (*
 	}
 }
 
-// Get a topic by name. Returns a codes.NotFound code if the topic does not exist, or a codes.FailedPrecondition code
+// Get a topic by name. Returns a codes.NotFound code if the topic does not exist, or a codes.InvalidArgument code
 // if a topic record is found with incomplete data.
 func (svr *GRPC) Get(ctx context.Context, request *topicsvc.GetRequest) (*topicsvc.GetResponse, error) {
 	t, err := svr.querier.Get(ctx, request.GetName())
@@ -101,7 +101,7 @@ func (svr *GRPC) Get(ctx context.Context, request *topicsvc.GetRequest) (*topics
 	case errors.Is(err, ErrNoTopic):
 		return nil, status.Errorf(codes.NotFound, "topic %s does not exist", request.GetName())
 	case errors.Is(err, ErrNoTopicInfo):
-		return nil, status.Errorf(codes.FailedPrecondition, "topic %s is not defined, it should be recreated", request.GetName())
+		return nil, status.Errorf(codes.InvalidArgument, "topic %s is not defined, it should be recreated", request.GetName())
 	case err != nil:
 		return nil, status.Errorf(codes.Internal, "failed to get topic %s: %v", request.GetName(), err)
 	default:
