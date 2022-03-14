@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1;node";
+
+// Package arrebato.node.v1 provides domain models for nodes.
+package arrebato.node.v1;
+
+// The Node message describes a single node within the cluster.
+message Node {
+  // Whether or not the node is the leader of the cluster.
+  bool leader = 1;
+}

@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/node/service/v1;nodesvc";
+
+import "arrebato/node/v1/node.proto";
+
+// Package arrebato.node.service.v1 provides the schema for the NodeService, which is used to describe nodes within the
+// cluster.
+package arrebato.node.service.v1;
+
+// The NodeService is a gRPC service that can introspects node information.
+service NodeService {
+  // Describe the Node.
+  rpc Describe(DescribeRequest) returns (DescribeResponse);
+}
+
+// The DescribeRequest message is the request DTO when calling NodeService.Describe.
+message DescribeRequest {
+
+}
+
+// The DescribeResponse message is the response DTO when calling NodeService.Describe. It contains node details.
+message DescribeResponse {
+  // Information about the queried node.
+  arrebato.node.v1.Node node = 1;
+}
