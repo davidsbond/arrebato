@@ -91,7 +91,8 @@ func (svr *GRPC) Produce(ctx context.Context, request *messagesvc.ProduceRequest
 	cmd := command.New(&messagecmd.CreateMessage{
 		Message: &message.Message{
 			Topic:     request.GetMessage().GetTopic(),
-			Payload:   request.GetMessage().GetPayload(),
+			Key:       request.GetMessage().GetKey(),
+			Value:     request.GetMessage().GetValue(),
 			Timestamp: timestamppb.Now(),
 		},
 	})

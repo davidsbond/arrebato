@@ -43,7 +43,7 @@ func TestPruner_PruneMessages(t *testing.T) {
 	// Put a message on the topic that we expect to be pruned
 	_, err := messages.Create(ctx, &messagepb.Message{
 		Topic:     "test-topic",
-		Payload:   testutil.Any(t, structpb.NewStringValue("hello")),
+		Value:     testutil.Any(t, structpb.NewStringValue("hello")),
 		Timestamp: timestamppb.New(time.Now().Add(-time.Hour)),
 	})
 	require.NoError(t, err)
@@ -51,7 +51,7 @@ func TestPruner_PruneMessages(t *testing.T) {
 	// Put a message on the topic we expect to still be there
 	_, err = messages.Create(ctx, &messagepb.Message{
 		Topic:     "test-topic",
-		Payload:   testutil.Any(t, structpb.NewStringValue("world")),
+		Value:     testutil.Any(t, structpb.NewStringValue("world")),
 		Timestamp: timestamppb.New(time.Now().Add(time.Hour)),
 	})
 	require.NoError(t, err)
@@ -70,7 +70,7 @@ func TestPruner_PruneMessages(t *testing.T) {
 	assert.Eventually(t, func() bool {
 		var gotMessage bool
 		_ = messages.Read(ctx, "test-topic", 0, func(ctx context.Context, m *messagepb.Message) error {
-			payload, err := m.GetPayload().UnmarshalNew()
+			payload, err := m.GetValue().UnmarshalNew()
 			require.NoError(t, err)
 
 			switch p := payload.(type) {

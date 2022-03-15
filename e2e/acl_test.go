@@ -48,7 +48,7 @@ func (s *ACLSuite) TestACLRulesApply() {
 	s.Run("The ACL should allow us to produce messages", func() {
 		producer := s.client.NewProducer("test-topic")
 		require.NoError(s.T(), producer.Produce(ctx, arrebato.Message{
-			Payload: timestamppb.Now(),
+			Value: timestamppb.Now(),
 		}))
 	})
 
@@ -58,7 +58,7 @@ func (s *ACLSuite) TestACLRulesApply() {
 
 		producer := client.NewProducer("test-topic")
 		require.Error(s.T(), producer.Produce(ctx, arrebato.Message{
-			Payload: timestamppb.Now(),
+			Value: timestamppb.Now(),
 		}))
 	})
 }

@@ -36,15 +36,15 @@ func TestGRPC_Produce(t *testing.T) {
 			ACLAllow: true,
 			Request: &messagesvc.ProduceRequest{
 				Message: &messagepb.Message{
-					Topic:   "test-topic",
-					Payload: testutil.Any(t, timestamppb.New(time.Time{})),
+					Topic: "test-topic",
+					Value: testutil.Any(t, timestamppb.New(time.Time{})),
 				},
 			},
 			ExpectedCode: codes.OK,
 			Expected: command.New(&messagecmd.CreateMessage{
 				Message: &messagepb.Message{
-					Topic:   "test-topic",
-					Payload: testutil.Any(t, timestamppb.New(time.Time{})),
+					Topic: "test-topic",
+					Value: testutil.Any(t, timestamppb.New(time.Time{})),
 				},
 			}),
 		},
@@ -53,8 +53,8 @@ func TestGRPC_Produce(t *testing.T) {
 			ACLAllow: true,
 			Request: &messagesvc.ProduceRequest{
 				Message: &messagepb.Message{
-					Topic:   "test-topic",
-					Payload: testutil.Any(t, timestamppb.New(time.Time{})),
+					Topic: "test-topic",
+					Value: testutil.Any(t, timestamppb.New(time.Time{})),
 				},
 			},
 			ExpectedCode: codes.FailedPrecondition,
@@ -65,8 +65,8 @@ func TestGRPC_Produce(t *testing.T) {
 			ACLAllow: true,
 			Request: &messagesvc.ProduceRequest{
 				Message: &messagepb.Message{
-					Topic:   "test-topic",
-					Payload: testutil.Any(t, timestamppb.New(time.Time{})),
+					Topic: "test-topic",
+					Value: testutil.Any(t, timestamppb.New(time.Time{})),
 				},
 			},
 			ExpectedCode: codes.NotFound,
@@ -76,8 +76,8 @@ func TestGRPC_Produce(t *testing.T) {
 			Name: "It should return permission denied if the ACL does not allow producing",
 			Request: &messagesvc.ProduceRequest{
 				Message: &messagepb.Message{
-					Topic:   "test-topic",
-					Payload: testutil.Any(t, timestamppb.New(time.Time{})),
+					Topic: "test-topic",
+					Value: testutil.Any(t, timestamppb.New(time.Time{})),
 				},
 			},
 			ExpectedCode: codes.PermissionDenied,
@@ -101,7 +101,7 @@ func TestGRPC_Produce(t *testing.T) {
 			actual := executor.command.Payload().(*messagecmd.CreateMessage)
 
 			assert.EqualValues(t, expected.GetMessage().GetTopic(), actual.GetMessage().GetTopic())
-			assert.EqualValues(t, expected.GetMessage().GetPayload(), actual.GetMessage().GetPayload())
+			assert.EqualValues(t, expected.GetMessage().GetValue(), actual.GetMessage().GetValue())
 			assert.NotNil(t, actual.GetMessage().GetTimestamp())
 		})
 	}
@@ -129,8 +129,8 @@ func TestGRPC_Consume(t *testing.T) {
 			},
 			SeedTopic: []*messagepb.Message{
 				{
-					Topic:   "test-topic",
-					Payload: testutil.Any(t, timestamppb.New(time.Time{})),
+					Topic: "test-topic",
+					Value: testutil.Any(t, timestamppb.New(time.Time{})),
 				},
 			},
 			ExpectedCode: codes.DeadlineExceeded,

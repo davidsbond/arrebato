@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/davidsbond/arrebato/internal/testutil"
@@ -38,7 +37,7 @@ func (s *MessageSuite) TestProduceConsumeMessages() {
 		producer := s.client.NewProducer("test-suite-topic")
 
 		require.NoError(s.T(), producer.Produce(ctx, arrebato.Message{
-			Payload: expected,
+			Value: expected,
 		}))
 	})
 
@@ -55,8 +54,8 @@ func (s *MessageSuite) TestProduceConsumeMessages() {
 			assert.NoError(s.T(), consumer.Close())
 		})
 
-		err = consumer.Consume(ctx, func(ctx context.Context, m proto.Message) error {
-			switch actual := m.(type) {
+		err = consumer.Consume(ctx, func(ctx context.Context, m arrebato.Message) error {
+			switch actual := m.Value.(type) {
 			case *structpb.Value:
 				assert.EqualValues(s.T(), expected.GetStringValue(), actual.GetStringValue())
 				return nil
@@ -76,7 +75,7 @@ func (s *MessageSuite) TestProduceConsumeMessages() {
 			expected = structpb.NewStringValue(strconv.Itoa(i))
 
 			require.NoError(s.T(), producer.Produce(ctx, arrebato.Message{
-				Payload: expected,
+				Value: expected,
 			}))
 		}
 	})
@@ -93,10 +92,10 @@ func (s *MessageSuite) TestProduceConsumeMessages() {
 			assert.NoError(s.T(), consumer.Close())
 		})
 
-		err = consumer.Consume(ctx, func(ctx context.Context, m proto.Message) error {
+		err = consumer.Consume(ctx, func(ctx context.Context, m arrebato.Message) error {
 			defer cancel()
 
-			switch actual := m.(type) {
+			switch actual := m.Value.(type) {
 			case *structpb.Value:
 				// We should have the first message from the 1024 we produced earlier, not the "hello-world" one we
 				// initially produced.

@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"google.golang.org/protobuf/proto"
-
 	consumersvc "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/service/v1"
 	"github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/v1"
 	messagesvc "github.com/davidsbond/arrebato/internal/proto/arrebato/message/service/v1"
@@ -21,7 +19,7 @@ type (
 	}
 
 	// The ConsumerFunc is a function invoked for each message consumed by a Consumer.
-	ConsumerFunc func(ctx context.Context, m proto.Message) error
+	ConsumerFunc func(ctx context.Context, m Message) error
 
 	// The ConsumerConfig type describes configuration values for the Consumer type.
 	ConsumerConfig struct {
@@ -66,12 +64,20 @@ func (c *Consumer) Consume(ctx context.Context, fn ConsumerFunc) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case msg := <-messages:
-			m, err := msg.GetPayload().UnmarshalNew()
+			value, err := msg.GetValue().UnmarshalNew()
 			if err != nil {
-				return fmt.Errorf("failed to unmarshal %s:%v: %w", msg.GetTopic(), msg.GetIndex(), err)
+				return fmt.Errorf("failed to unmarshal value for %s:%v: %w", msg.GetTopic(), msg.GetIndex(), err)
 			}
 
-			if err = fn(ctx, m); err != nil {
+			key, err := msg.GetKey().UnmarshalNew()
+			if err != nil {
+				return fmt.Errorf("failed to unmarshal key for %s:%v: %w", msg.GetTopic(), msg.GetIndex(), err)
+			}
+
+			if err = fn(ctx, Message{
+				Key:   key,
+				Value: value,
+			}); err != nil {
 				return err
 			}
 

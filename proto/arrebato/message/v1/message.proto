@@ -15,9 +15,14 @@ message Message {
   // The location of the message within the topic. This is managed by the cluster and should not be provided when
   // producing messages.
   uint64 index = 2;
+
+  // The client-provided message key contents.
+  google.protobuf.Any key = 3;
+
   // The client-provided message contents.
-  google.protobuf.Any payload = 3;
+  google.protobuf.Any value = 4;
+
   // The time at which the message was produced. This is managed by the cluster and should not be provided when
   // producing messages.
-  google.protobuf.Timestamp timestamp = 4;
+  google.protobuf.Timestamp timestamp = 5;
 }
