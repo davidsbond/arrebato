@@ -10,6 +10,8 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -71,8 +73,9 @@ func NewGRPC(executor Executor, reader Reader, consumers TopicIndexGetter, acl A
 }
 
 // Register the GRPC service onto the grpc.ServiceRegistrar.
-func (svr *GRPC) Register(registrar grpc.ServiceRegistrar) {
+func (svr *GRPC) Register(registrar grpc.ServiceRegistrar, health *health.Server) {
 	messagesvc.RegisterMessageServiceServer(registrar, svr)
+	health.SetServingStatus(messagesvc.MessageService_ServiceDesc.ServiceName, grpc_health_v1.HealthCheckResponse_SERVING)
 }
 
 // Produce a new message for a topic. Returns a codes.NotFound code if the topic does not exist.

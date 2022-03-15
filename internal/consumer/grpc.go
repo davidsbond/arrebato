@@ -8,6 +8,8 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -38,8 +40,9 @@ func NewGRPC(executor Executor) *GRPC {
 }
 
 // Register the GRPC service onto the grpc.ServiceRegistrar.
-func (svr *GRPC) Register(registrar grpc.ServiceRegistrar) {
+func (svr *GRPC) Register(registrar grpc.ServiceRegistrar, healthServer *health.Server) {
 	consumersvc.RegisterConsumerServiceServer(registrar, svr)
+	healthServer.SetServingStatus(consumersvc.ConsumerService_ServiceDesc.ServiceName, grpc_health_v1.HealthCheckResponse_SERVING)
 }
 
 // SetTopicIndex handles an inbound gRPC request to set the current position of a consumer on a topic. Returns a

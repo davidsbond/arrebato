@@ -4,8 +4,6 @@ services:
     build:
       context: .
     restart: on-failure
-    command:
-      - --log-level=1
     networks:
       - default
 
@@ -14,7 +12,6 @@ services:
       context: .
     restart: on-failure
     command:
-      - --log-level=1
       - --peers=arrebato-0
     depends_on:
       - arrebato-0
@@ -26,7 +23,6 @@ services:
       context: .
     restart: on-failure
     command:
-      - --log-level=1
       - --peers=arrebato-0
     depends_on:
       - arrebato-0

@@ -9,5 +9,4 @@ images:
 resources:
   - namespace.yaml
   - statefulset.yaml
-  - service-cluster.yaml
-  - service-client.yaml
+  - service.yaml

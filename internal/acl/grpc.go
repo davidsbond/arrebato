@@ -6,6 +6,8 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 
 	"github.com/davidsbond/arrebato/internal/command"
@@ -43,8 +45,9 @@ func NewGRPC(executor Executor, acl Getter) *GRPC {
 }
 
 // Register the GRPC service onto the grpc.ServiceRegistrar.
-func (svr *GRPC) Register(registrar grpc.ServiceRegistrar) {
+func (svr *GRPC) Register(registrar grpc.ServiceRegistrar, health *health.Server) {
 	aclsvc.RegisterACLServiceServer(registrar, svr)
+	health.SetServingStatus(aclsvc.ACLService_ServiceDesc.ServiceName, grpc_health_v1.HealthCheckResponse_SERVING)
 }
 
 // Set the server's new ACL state.

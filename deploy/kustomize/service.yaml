@@ -1,7 +1,7 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: arrebato-cluster
+  name: arrebato
 spec:
   clusterIP: None
   selector:
@@ -15,3 +15,6 @@ spec:
       targetPort: serf
       protocol: TCP
       name: serf
+    - port: 5002
+      targetPort: grpc
+      protocol: TCP

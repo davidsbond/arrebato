@@ -8,6 +8,8 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 
 	"github.com/davidsbond/arrebato/internal/command"
@@ -51,8 +53,9 @@ func NewGRPC(executor Executor, querier Querier) *GRPC {
 }
 
 // Register the GRPC service onto the grpc.ServiceRegistrar.
-func (svr *GRPC) Register(registrar grpc.ServiceRegistrar) {
+func (svr *GRPC) Register(registrar grpc.ServiceRegistrar, health *health.Server) {
 	topicsvc.RegisterTopicServiceServer(registrar, svr)
+	health.SetServingStatus(topicsvc.TopicService_ServiceDesc.ServiceName, grpc_health_v1.HealthCheckResponse_SERVING)
 }
 
 // Create a new Topic. Returns a codes.AlreadyExists code if the topic already exists.

@@ -6,6 +6,8 @@ import (
 
 	"github.com/hashicorp/raft"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 
 	nodesvc "github.com/davidsbond/arrebato/internal/proto/arrebato/node/service/v1"
 	"github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
@@ -30,8 +32,9 @@ func NewGRPC(raft Raft) *GRPC {
 }
 
 // Register the GRPC service onto the grpc.ServiceRegistrar.
-func (svr *GRPC) Register(registrar grpc.ServiceRegistrar) {
+func (svr *GRPC) Register(registrar grpc.ServiceRegistrar, health *health.Server) {
 	nodesvc.RegisterNodeServiceServer(registrar, svr)
+	health.SetServingStatus(nodesvc.NodeService_ServiceDesc.ServiceName, grpc_health_v1.HealthCheckResponse_SERVING)
 }
 
 // Describe the node.

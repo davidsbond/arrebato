@@ -14,10 +14,12 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	"github.com/davidsbond/arrebato/internal/clientinfo"
-
 	// Enable gzip compression from gRPC clients.
 	_ "google.golang.org/grpc/encoding/gzip"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
+
+	"github.com/davidsbond/arrebato/internal/clientinfo"
 )
 
 type (
@@ -88,12 +90,18 @@ func (svr *Server) serveGRPC(ctx context.Context) error {
 	)
 
 	server := grpc.NewServer(options...)
+	healthServer := health.NewServer()
 
-	svr.consumerGRPC.Register(server)
-	svr.messageGRPC.Register(server)
-	svr.topicGRPC.Register(server)
-	svr.aclGRPC.Register(server)
-	svr.nodeGRPC.Register(server)
+	svr.consumerGRPC.Register(server, healthServer)
+	svr.messageGRPC.Register(server, healthServer)
+	svr.topicGRPC.Register(server, healthServer)
+	svr.aclGRPC.Register(server, healthServer)
+	svr.nodeGRPC.Register(server, healthServer)
+
+	// Part of the gRPC health checking protocol states that the server should use an empty string as the key for
+	// the server's overall health status.
+	healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
+	grpc_health_v1.RegisterHealthServer(server, healthServer)
 
 	grp, ctx := errgroup.WithContext(ctx)
 	grp.Go(func() error {
@@ -103,11 +111,13 @@ func (svr *Server) serveGRPC(ctx context.Context) error {
 		}
 
 		svr.logger.Named("grpc").Info("starting listener", "address", address)
+
 		return server.Serve(listener)
 	})
 
 	grp.Go(func() error {
 		<-ctx.Done()
+		healthServer.Shutdown()
 		server.GracefulStop()
 		return nil
 	})
