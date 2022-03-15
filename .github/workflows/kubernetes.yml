@@ -1,0 +1,47 @@
+name: kubernetes
+on:
+  push:
+    paths:
+      - 'deploy/kustomize/**.yaml'
+    branches:
+      - master
+  pull_request:
+    paths:
+      - 'deploy/kustomize/**.yaml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.17.x'
+
+      - name: Get cache paths
+        id: cache
+        run: |
+          echo "::set-output name=build::$(go env GOCACHE)"
+          echo "::set-output name=module::$(go env GOMODCACHE)"
+
+      - name: Set up cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ${{ steps.cache.outputs.build }}
+            ${{ steps.cache.outputs.module }}
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install tools
+        run: |
+          make install-kustomize
+          make install-kubeval
+
+      - name: Validate manifests
+        run: |
+          make kubeval

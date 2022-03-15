@@ -33,7 +33,7 @@ format:
 snapshot:
 	goreleaser release --snapshot --rm-dist
 
-install-tools: install-buf install-kustomize install-protoc-plugins install-golangci-lint install-gofumpt install-bbolt install-syft
+install-tools: install-buf install-kustomize install-protoc-plugins install-golangci-lint install-gofumpt install-bbolt install-syft install-kubeval
 
 kustomize:
 	kustomize build deploy/kustomize -o install.yaml
@@ -61,6 +61,9 @@ install-gofumpt:
 install-bbolt:
 	go install go.etcd.io/bbolt/cmd/bbolt
 
+install-kubeval:
+	go install github.com/instrumenta/kubeval
+
 generate-certs:
 	rm *.pem
 	openssl req -x509 -newkey rsa:4096 -days 365 -nodes -keyout ca-key.pem -out ca-cert.pem -subj "/CN=*.arrebato"
@@ -69,3 +72,6 @@ generate-certs:
 	openssl req -newkey rsa:4096 -nodes -keyout client-key.pem -out client-req.pem -subj "/CN=*.client.arrebato"
 	openssl x509 -req -in client-req.pem -days 60 -CA ca-cert.pem -CAkey ca-key.pem -CAcreateserial -out client-cert.pem
 	rm *-req.pem
+
+kubeval: kustomize
+	kubeval install.yaml
