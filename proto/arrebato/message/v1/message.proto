@@ -25,4 +25,12 @@ message Message {
   // The time at which the message was produced. This is managed by the cluster and should not be provided when
   // producing messages.
   google.protobuf.Timestamp timestamp = 5;
+
+  // Information about the client that produced the message.
+  Sender sender = 6;
+}
+
+// The Sender message describes a client that produced a Message.
+message Sender {
+  string id = 1;
 }

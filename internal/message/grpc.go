@@ -80,7 +80,8 @@ func (svr *GRPC) Register(registrar grpc.ServiceRegistrar, health *health.Server
 
 // Produce a new message for a topic. Returns a codes.NotFound code if the topic does not exist.
 func (svr *GRPC) Produce(ctx context.Context, request *messagesvc.ProduceRequest) (*messagesvc.ProduceResponse, error) {
-	allowed, err := svr.canProduce(ctx, request.GetMessage().GetTopic())
+	info := clientinfo.FromContext(ctx)
+	allowed, err := svr.canProduce(ctx, info, request.GetMessage().GetTopic())
 	switch {
 	case err != nil:
 		return nil, status.Errorf(codes.Internal, "failed to check ACL: %v", err)
@@ -94,6 +95,9 @@ func (svr *GRPC) Produce(ctx context.Context, request *messagesvc.ProduceRequest
 			Key:       request.GetMessage().GetKey(),
 			Value:     request.GetMessage().GetValue(),
 			Timestamp: timestamppb.Now(),
+			Sender: &message.Sender{
+				Id: info.ID,
+			},
 		},
 	})
 
@@ -113,8 +117,9 @@ func (svr *GRPC) Produce(ctx context.Context, request *messagesvc.ProduceRequest
 // Consume messages from a topic. Returns a codes.NotFound code if the topic does not exist.
 func (svr *GRPC) Consume(request *messagesvc.ConsumeRequest, server messagesvc.MessageService_ConsumeServer) error {
 	ctx := server.Context()
+	info := clientinfo.FromContext(ctx)
 
-	allowed, err := svr.canConsume(ctx, request.GetTopic())
+	allowed, err := svr.canConsume(ctx, info, request.GetTopic())
 	switch {
 	case err != nil:
 		return status.Errorf(codes.Internal, "failed to check ACL: %v", err)
@@ -173,8 +178,7 @@ func (svr *GRPC) Consume(request *messagesvc.ConsumeRequest, server messagesvc.M
 	}
 }
 
-func (svr *GRPC) canConsume(ctx context.Context, topic string) (bool, error) {
-	info := clientinfo.FromContext(ctx)
+func (svr *GRPC) canConsume(ctx context.Context, info clientinfo.ClientInfo, topic string) (bool, error) {
 	return svr.acl.Allowed(ctx,
 		topic,
 		info.ID,
@@ -182,8 +186,7 @@ func (svr *GRPC) canConsume(ctx context.Context, topic string) (bool, error) {
 	)
 }
 
-func (svr *GRPC) canProduce(ctx context.Context, topic string) (bool, error) {
-	info := clientinfo.FromContext(ctx)
+func (svr *GRPC) canProduce(ctx context.Context, info clientinfo.ClientInfo, topic string) (bool, error) {
 	return svr.acl.Allowed(ctx,
 		topic,
 		info.ID,

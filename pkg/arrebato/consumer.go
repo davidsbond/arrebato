@@ -4,6 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
+
 	consumersvc "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/service/v1"
 	"github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/v1"
 	messagesvc "github.com/davidsbond/arrebato/internal/proto/arrebato/message/service/v1"
@@ -69,15 +73,23 @@ func (c *Consumer) Consume(ctx context.Context, fn ConsumerFunc) error {
 				return fmt.Errorf("failed to unmarshal value for %s:%v: %w", msg.GetTopic(), msg.GetIndex(), err)
 			}
 
-			key, err := msg.GetKey().UnmarshalNew()
-			if err != nil {
-				return fmt.Errorf("failed to unmarshal key for %s:%v: %w", msg.GetTopic(), msg.GetIndex(), err)
+			var key proto.Message
+			if msg.GetKey() != nil {
+				key, err = msg.GetKey().UnmarshalNew()
+				if err != nil {
+					return fmt.Errorf("failed to unmarshal key for %s:%v: %w", msg.GetTopic(), msg.GetIndex(), err)
+				}
 			}
 
-			if err = fn(ctx, Message{
+			m := Message{
 				Key:   key,
 				Value: value,
-			}); err != nil {
+				Sender: Sender{
+					ID: msg.GetSender().GetId(),
+				},
+			}
+
+			if err = fn(ctx, m); err != nil {
 				return err
 			}
 
@@ -92,16 +104,28 @@ func (c *Consumer) Consume(ctx context.Context, fn ConsumerFunc) error {
 			}
 
 			svc := consumersvc.NewConsumerServiceClient(c.cluster.leader())
-			if _, err := svc.SetTopicIndex(ctx, req); err != nil {
+			_, err := svc.SetTopicIndex(ctx, req)
+			switch {
+			case status.Code(err) == codes.Canceled:
+				return context.Canceled
+			case status.Code(err) == codes.DeadlineExceeded:
+				return context.DeadlineExceeded
+			case err != nil:
 				return fmt.Errorf("failed to update topic index: %w", err)
 			}
+
 		default:
 			resp, err := c.stream.Recv()
-			if err != nil {
+			switch {
+			case status.Code(err) == codes.Canceled:
+				return context.Canceled
+			case status.Code(err) == codes.DeadlineExceeded:
+				return context.DeadlineExceeded
+			case err != nil:
 				return fmt.Errorf("failed to receive message: %w", err)
+			default:
+				messages <- resp.GetMessage()
 			}
-
-			messages <- resp.GetMessage()
 		}
 	}
 }

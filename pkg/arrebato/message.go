@@ -12,8 +12,14 @@ import (
 type (
 	// The Message type describes a message that is produced/consumed by arrebato clients.
 	Message struct {
-		Value proto.Message
-		Key   proto.Message
+		Value  proto.Message
+		Key    proto.Message
+		Sender Sender
+	}
+
+	// The Sender type describes the client that produced a message.
+	Sender struct {
+		ID string
 	}
 )
 

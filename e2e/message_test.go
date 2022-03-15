@@ -2,6 +2,7 @@ package e2e_test
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"time"
 
@@ -55,6 +56,8 @@ func (s *MessageSuite) TestProduceConsumeMessages() {
 		})
 
 		err = consumer.Consume(ctx, func(ctx context.Context, m arrebato.Message) error {
+			assert.EqualValues(s.T(), "test-client", m.Sender.ID)
+
 			switch actual := m.Value.(type) {
 			case *structpb.Value:
 				assert.EqualValues(s.T(), expected.GetStringValue(), actual.GetStringValue())
@@ -65,7 +68,7 @@ func (s *MessageSuite) TestProduceConsumeMessages() {
 			}
 		})
 
-		assert.Error(s.T(), err)
+		assert.True(s.T(), errors.Is(err, context.DeadlineExceeded))
 	})
 
 	s.Run("It should produce many messages on a topic", func() {
@@ -94,6 +97,7 @@ func (s *MessageSuite) TestProduceConsumeMessages() {
 
 		err = consumer.Consume(ctx, func(ctx context.Context, m arrebato.Message) error {
 			defer cancel()
+			assert.EqualValues(s.T(), "test-client", m.Sender.ID)
 
 			switch actual := m.Value.(type) {
 			case *structpb.Value:
@@ -107,6 +111,6 @@ func (s *MessageSuite) TestProduceConsumeMessages() {
 			}
 		})
 
-		assert.Error(s.T(), err)
+		assert.True(s.T(), errors.Is(err, context.Canceled))
 	})
 }
