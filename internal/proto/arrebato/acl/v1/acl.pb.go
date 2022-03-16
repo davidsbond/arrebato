@@ -133,8 +133,13 @@ type Entry struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Topic       string       `protobuf:"bytes,1,opt,name=topic,proto3" json:"topic,omitempty"`
-	Client      string       `protobuf:"bytes,2,opt,name=client,proto3" json:"client,omitempty"`
+	// The topic to set permissions for.
+	Topic string `protobuf:"bytes,1,opt,name=topic,proto3" json:"topic,omitempty"`
+	// The client identifier the entry refers to. In an insecure environment, this can be an arbitrary string that the
+	// client will use to identify itself in the request metadata. When using mutual TLS, this will be a SPIFFE ID that
+	// the client will include in its TLS certificate.
+	Client string `protobuf:"bytes,2,opt,name=client,proto3" json:"client,omitempty"`
+	// Permissions to apply to the client.
 	Permissions []Permission `protobuf:"varint,3,rep,packed,name=permissions,proto3,enum=arrebato.acl.v1.Permission" json:"permissions,omitempty"`
 }
 

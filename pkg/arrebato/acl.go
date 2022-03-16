@@ -22,7 +22,9 @@ type (
 	ACLEntry struct {
 		// The name of the topic.
 		Topic string
-		// The name of the client.
+		// The client identifier the entry refers to. In an insecure environment, this can be an arbitrary string that the
+		// client will use to identify itself in the request metadata. When using mutual TLS, this will be a SPIFFE ID that
+		// the client will include in its TLS certificate.
 		Client string
 		// The permissions the client has on the topic.
 		Permissions []ACLPermission

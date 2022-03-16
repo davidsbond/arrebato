@@ -88,8 +88,7 @@ func StreamServerInterceptor(fn Extractor) grpc.StreamServerInterceptor {
 }
 
 // TLSExtractor is an Extractor implementation that attempts to generate a ClientInfo using the client's TLS certificate.
-// The client identifier will be the peer's SPIFFE identifier. It expects the client's X-Client-ID metadata field to
-// match the common-name in the certificate.
+// The client identifier will be the peer's SPIFFE identifier.
 func TLSExtractor(ctx context.Context) (ClientInfo, error) {
 	p, ok := peer.FromContext(ctx)
 	if !ok {
@@ -103,20 +102,6 @@ func TLSExtractor(ctx context.Context) (ClientInfo, error) {
 
 	if tlsInfo.SPIFFEID == nil {
 		return ClientInfo{}, status.Error(codes.InvalidArgument, "peer info is missing SPIFFE ID")
-	}
-
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return ClientInfo{}, status.Error(codes.InvalidArgument, "incoming context contains no metadata")
-	}
-
-	values := md.Get("X-Client-ID")
-	if len(values) == 0 {
-		return ClientInfo{}, status.Error(codes.InvalidArgument, "X-Client-ID metadata is not set")
-	}
-
-	if strings.Join(values, "") != tlsInfo.SPIFFEID.String() {
-		return ClientInfo{}, status.Error(codes.InvalidArgument, "X-Client-ID metadata does not match certificate's SPIFFE ID")
 	}
 
 	return ClientInfo{

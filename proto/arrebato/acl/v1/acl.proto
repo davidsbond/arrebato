@@ -15,8 +15,15 @@ message ACL {
 // The Entry message describes a single set of permissions applied to a client
 // for a topic.
 message Entry {
+  // The topic to set permissions for.
   string topic = 1;
+
+  // The client identifier the entry refers to. In an insecure environment, this can be an arbitrary string that the
+  // client will use to identify itself in the request metadata. When using mutual TLS, this will be a SPIFFE ID that
+  // the client will include in its TLS certificate.
   string client = 2;
+
+  // Permissions to apply to the client.
   repeated Permission permissions = 3;
 }
 

@@ -25,9 +25,22 @@ type (
 
 	// The Config type describes configuration values used by a Client.
 	Config struct {
-		Addresses         []string
-		TLS               *tls.Config
-		ClientID          string
+		// Addresses of the running servers, multiple addresses are expected here so that the client can correctly
+		// route write operations to the leader.
+		Addresses []string
+
+		// Configuration for connecting to the server via TLS. When using TLS, the server will expect clients to be
+		// issued a SPIFFE ID for identification.
+		TLS *tls.Config
+
+		// The identifier for the client, this is only required when running the server in an insecure mode, when using
+		// TLS, it is expected that the client certificate will contain a SPIFFE ID that the client will use to
+		// identify itself.
+		ClientID string
+
+		// An optional signing key used for messages. When producing messages, if both a message key and this signing
+		// key are present, a signature is sent to the server along with the message to verify the message was produced
+		// by this client.
 		MessageSigningKey []byte
 	}
 )

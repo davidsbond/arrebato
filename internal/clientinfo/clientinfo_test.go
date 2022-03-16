@@ -101,24 +101,6 @@ func TestUnaryServerInterceptor(t *testing.T) {
 			ExpectedCode: codes.InvalidArgument,
 		},
 		{
-			Name:      "It should return codes.InvalidArgument if the SPIFFE ID does not match the metadata header",
-			Extractor: clientinfo.TLSExtractor,
-			Handler: func(t *testing.T) grpc.UnaryHandler {
-				return nil
-			},
-			Context: func(ctx context.Context) context.Context {
-				return peer.NewContext(ctx, &peer.Peer{
-					AuthInfo: credentials.TLSInfo{
-						SPIFFEID: &url.URL{
-							Scheme: "spiffe",
-							Host:   "test",
-						},
-					},
-				})
-			},
-			ExpectedCode: codes.InvalidArgument,
-		},
-		{
 			Name:      "It should add the ClientInfo to the context on success from the TLS certificate",
 			Extractor: clientinfo.TLSExtractor,
 			Handler: func(t *testing.T) grpc.UnaryHandler {
@@ -235,24 +217,6 @@ func TestStreamServerInterceptor(t *testing.T) {
 			Context: func(ctx context.Context) context.Context {
 				return peer.NewContext(ctx, &peer.Peer{
 					AuthInfo: credentials.TLSInfo{},
-				})
-			},
-			ExpectedCode: codes.InvalidArgument,
-		},
-		{
-			Name:      "It should return codes.InvalidArgument if the SPIFFE ID does not match the metadata header",
-			Extractor: clientinfo.TLSExtractor,
-			Handler: func(t *testing.T) grpc.StreamHandler {
-				return nil
-			},
-			Context: func(ctx context.Context) context.Context {
-				return peer.NewContext(ctx, &peer.Peer{
-					AuthInfo: credentials.TLSInfo{
-						SPIFFEID: &url.URL{
-							Scheme: "spiffe",
-							Host:   "test",
-						},
-					},
 				})
 			},
 			ExpectedCode: codes.InvalidArgument,
