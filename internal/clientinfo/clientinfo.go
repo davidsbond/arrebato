@@ -88,7 +88,7 @@ func StreamServerInterceptor(fn Extractor) grpc.StreamServerInterceptor {
 }
 
 // TLSExtractor is an Extractor implementation that attempts to generate a ClientInfo using the client's TLS certificate.
-// The client identifier will be the certificate's common-name. It expects the client's X-Client-ID metadata field to
+// The client identifier will be the peer's SPIFFE identifier. It expects the client's X-Client-ID metadata field to
 // match the common-name in the certificate.
 func TLSExtractor(ctx context.Context) (ClientInfo, error) {
 	p, ok := peer.FromContext(ctx)
@@ -96,16 +96,14 @@ func TLSExtractor(ctx context.Context) (ClientInfo, error) {
 		return ClientInfo{}, status.Error(codes.Unauthenticated, "no peer in incoming context")
 	}
 
-	raw, ok := p.AuthInfo.(credentials.TLSInfo)
+	tlsInfo, ok := p.AuthInfo.(credentials.TLSInfo)
 	if !ok {
 		return ClientInfo{}, status.Error(codes.Unauthenticated, "peer is not using TLS, is your client configured correctly?")
 	}
 
-	if len(raw.State.VerifiedChains) == 0 || len(raw.State.VerifiedChains[0]) == 0 {
-		return ClientInfo{}, status.Error(codes.Unauthenticated, "could not verify peer certificate")
+	if tlsInfo.SPIFFEID == nil {
+		return ClientInfo{}, status.Error(codes.InvalidArgument, "peer info is missing SPIFFE ID")
 	}
-
-	clientCert := raw.State.VerifiedChains[0][0]
 
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -117,12 +115,12 @@ func TLSExtractor(ctx context.Context) (ClientInfo, error) {
 		return ClientInfo{}, status.Error(codes.InvalidArgument, "X-Client-ID metadata is not set")
 	}
 
-	if strings.Join(values, "") != clientCert.Subject.CommonName {
-		return ClientInfo{}, status.Error(codes.InvalidArgument, "X-Client-ID metadata does not match certificate's common-name")
+	if strings.Join(values, "") != tlsInfo.SPIFFEID.String() {
+		return ClientInfo{}, status.Error(codes.InvalidArgument, "X-Client-ID metadata does not match certificate's SPIFFE ID")
 	}
 
 	return ClientInfo{
-		ID: clientCert.Subject.CommonName,
+		ID: tlsInfo.SPIFFEID.String(),
 	}, nil
 }
 

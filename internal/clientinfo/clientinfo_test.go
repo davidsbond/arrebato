@@ -2,9 +2,7 @@ package clientinfo_test
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
-	"crypto/x509/pkix"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -90,24 +88,20 @@ func TestUnaryServerInterceptor(t *testing.T) {
 			ExpectedCode: codes.Unauthenticated,
 		},
 		{
-			Name:      "It should return codes.Unauthenticated if there is no client certificate data",
+			Name:      "It should return codes.InvalidArgument if there's no SPIFFE ID",
 			Extractor: clientinfo.TLSExtractor,
 			Handler: func(t *testing.T) grpc.UnaryHandler {
 				return nil
 			},
 			Context: func(ctx context.Context) context.Context {
 				return peer.NewContext(ctx, &peer.Peer{
-					AuthInfo: &credentials.TLSInfo{
-						State: tls.ConnectionState{
-							VerifiedChains: [][]*x509.Certificate{},
-						},
-					},
+					AuthInfo: credentials.TLSInfo{},
 				})
 			},
-			ExpectedCode: codes.Unauthenticated,
+			ExpectedCode: codes.InvalidArgument,
 		},
 		{
-			Name:      "It should return codes.InvalidArgument if the certificate common name does not match the metadata header",
+			Name:      "It should return codes.InvalidArgument if the SPIFFE ID does not match the metadata header",
 			Extractor: clientinfo.TLSExtractor,
 			Handler: func(t *testing.T) grpc.UnaryHandler {
 				return nil
@@ -115,16 +109,9 @@ func TestUnaryServerInterceptor(t *testing.T) {
 			Context: func(ctx context.Context) context.Context {
 				return peer.NewContext(ctx, &peer.Peer{
 					AuthInfo: credentials.TLSInfo{
-						State: tls.ConnectionState{
-							VerifiedChains: [][]*x509.Certificate{
-								{
-									{
-										Subject: pkix.Name{
-											CommonName: "test",
-										},
-									},
-								},
-							},
+						SPIFFEID: &url.URL{
+							Scheme: "spiffe",
+							Host:   "test",
 						},
 					},
 				})
@@ -137,29 +124,22 @@ func TestUnaryServerInterceptor(t *testing.T) {
 			Handler: func(t *testing.T) grpc.UnaryHandler {
 				return func(ctx context.Context, req interface{}) (interface{}, error) {
 					info := clientinfo.FromContext(ctx)
-					assert.EqualValues(t, "test", info.ID)
+					assert.EqualValues(t, "spiffe://test", info.ID)
 					return nil, nil
 				}
 			},
 			Context: func(ctx context.Context) context.Context {
 				ctx = peer.NewContext(ctx, &peer.Peer{
 					AuthInfo: credentials.TLSInfo{
-						State: tls.ConnectionState{
-							VerifiedChains: [][]*x509.Certificate{
-								{
-									{
-										Subject: pkix.Name{
-											CommonName: "test",
-										},
-									},
-								},
-							},
+						SPIFFEID: &url.URL{
+							Scheme: "spiffe",
+							Host:   "test",
 						},
 					},
 				})
 
 				return metadata.NewIncomingContext(ctx, metadata.MD{
-					"x-client-id": []string{"test"},
+					"x-client-id": []string{"spiffe://test"},
 				})
 			},
 		},
@@ -247,24 +227,20 @@ func TestStreamServerInterceptor(t *testing.T) {
 			ExpectedCode: codes.Unauthenticated,
 		},
 		{
-			Name:      "It should return codes.Unauthenticated if there is no client certificate data",
+			Name:      "It should return codes.InvalidArgument if there's no SPIFFE ID",
 			Extractor: clientinfo.TLSExtractor,
 			Handler: func(t *testing.T) grpc.StreamHandler {
 				return nil
 			},
 			Context: func(ctx context.Context) context.Context {
 				return peer.NewContext(ctx, &peer.Peer{
-					AuthInfo: &credentials.TLSInfo{
-						State: tls.ConnectionState{
-							VerifiedChains: [][]*x509.Certificate{},
-						},
-					},
+					AuthInfo: credentials.TLSInfo{},
 				})
 			},
-			ExpectedCode: codes.Unauthenticated,
+			ExpectedCode: codes.InvalidArgument,
 		},
 		{
-			Name:      "It should return codes.InvalidArgument if the certificate common name does not match the metadata header",
+			Name:      "It should return codes.InvalidArgument if the SPIFFE ID does not match the metadata header",
 			Extractor: clientinfo.TLSExtractor,
 			Handler: func(t *testing.T) grpc.StreamHandler {
 				return nil
@@ -272,16 +248,9 @@ func TestStreamServerInterceptor(t *testing.T) {
 			Context: func(ctx context.Context) context.Context {
 				return peer.NewContext(ctx, &peer.Peer{
 					AuthInfo: credentials.TLSInfo{
-						State: tls.ConnectionState{
-							VerifiedChains: [][]*x509.Certificate{
-								{
-									{
-										Subject: pkix.Name{
-											CommonName: "test",
-										},
-									},
-								},
-							},
+						SPIFFEID: &url.URL{
+							Scheme: "spiffe",
+							Host:   "test",
 						},
 					},
 				})
@@ -294,29 +263,22 @@ func TestStreamServerInterceptor(t *testing.T) {
 			Handler: func(t *testing.T) grpc.StreamHandler {
 				return func(srv interface{}, stream grpc.ServerStream) error {
 					info := clientinfo.FromContext(stream.Context())
-					assert.EqualValues(t, "test", info.ID)
+					assert.EqualValues(t, "spiffe://test", info.ID)
 					return nil
 				}
 			},
 			Context: func(ctx context.Context) context.Context {
 				ctx = peer.NewContext(ctx, &peer.Peer{
 					AuthInfo: credentials.TLSInfo{
-						State: tls.ConnectionState{
-							VerifiedChains: [][]*x509.Certificate{
-								{
-									{
-										Subject: pkix.Name{
-											CommonName: "test",
-										},
-									},
-								},
-							},
+						SPIFFEID: &url.URL{
+							Scheme: "spiffe",
+							Host:   "test",
 						},
 					},
 				})
 
 				return metadata.NewIncomingContext(ctx, metadata.MD{
-					"x-client-id": []string{"test"},
+					"x-client-id": []string{"spiffe://test"},
 				})
 			},
 		},
