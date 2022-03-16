@@ -85,7 +85,8 @@ func (c *Consumer) Consume(ctx context.Context, fn ConsumerFunc) error {
 				Key:   key,
 				Value: value,
 				Sender: Sender{
-					ID: msg.GetSender().GetId(),
+					ID:       msg.GetSender().GetId(),
+					Verified: msg.GetSender().GetVerified(),
 				},
 			}
 

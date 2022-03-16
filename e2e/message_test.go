@@ -38,6 +38,7 @@ func (s *MessageSuite) TestProduceConsumeMessages() {
 		producer := s.client.NewProducer("test-suite-topic")
 
 		require.NoError(s.T(), producer.Produce(ctx, arrebato.Message{
+			Key:   structpb.NewStringValue("test-key"),
 			Value: expected,
 		}))
 	})

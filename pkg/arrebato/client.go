@@ -25,9 +25,10 @@ type (
 
 	// The Config type describes configuration values used by a Client.
 	Config struct {
-		Addresses []string
-		TLS       *tls.Config
-		ClientID  string
+		Addresses         []string
+		TLS               *tls.Config
+		ClientID          string
+		MessageSigningKey []byte
 	}
 )
 

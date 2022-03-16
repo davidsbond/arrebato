@@ -32,5 +32,10 @@ message Message {
 
 // The Sender message describes a client that produced a Message.
 message Sender {
+  // The client identifier.
   string id = 1;
+
+  // Whether or not the client provided the signed message key which has been verified by the server. This is used
+  // to confirm the sender is indeed who they claim to be.
+  bool verified = 2;
 }

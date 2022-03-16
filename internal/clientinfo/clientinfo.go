@@ -117,7 +117,7 @@ func TLSExtractor(ctx context.Context) (ClientInfo, error) {
 		return ClientInfo{}, status.Error(codes.InvalidArgument, "X-Client-ID metadata is not set")
 	}
 
-	if strings.Join(values, ";") != clientCert.Subject.CommonName {
+	if strings.Join(values, "") != clientCert.Subject.CommonName {
 		return ClientInfo{}, status.Error(codes.InvalidArgument, "X-Client-ID metadata does not match certificate's common-name")
 	}
 
@@ -140,6 +140,6 @@ func MetadataExtractor(ctx context.Context) (ClientInfo, error) {
 	}
 
 	return ClientInfo{
-		ID: strings.Join(values, ";"),
+		ID: strings.Join(values, ""),
 	}, nil
 }
