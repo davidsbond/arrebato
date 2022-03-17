@@ -25,6 +25,7 @@ import (
 	"github.com/davidsbond/arrebato/internal/message"
 	"github.com/davidsbond/arrebato/internal/node"
 	"github.com/davidsbond/arrebato/internal/prune"
+	"github.com/davidsbond/arrebato/internal/signing"
 	"github.com/davidsbond/arrebato/internal/topic"
 )
 
@@ -59,6 +60,11 @@ type (
 		consumerStore   *consumer.BoltStore
 		consumerHandler *consumer.Handler
 		consumerGRPC    *consumer.GRPC
+
+		// Dependencies for Signing Keys
+		signingStore   *signing.BoltStore
+		signingHandler *signing.Handler
+		signingGRPC    *signing.GRPC
 
 		// Dependencies for Nodes
 		nodeGRPC *node.GRPC
@@ -159,6 +165,11 @@ func New(config Config) (*Server, error) {
 	server.messageStore = message.NewBoltStore(server.store)
 	server.messageHandler = message.NewHandler(server.messageStore, server.logger)
 	server.messageGRPC = message.NewGRPC(executor, server.messageStore, server.consumerStore, server.aclStore)
+
+	// Signing stack
+	server.signingStore = signing.NewBoltStore(server.store)
+	server.signingHandler = signing.NewHandler(server.signingStore, server.logger)
+	server.signingGRPC = signing.NewGRPC(executor, server.signingStore)
 
 	// Pruning stack
 	server.pruner = prune.New(server.topicStore, server.messageStore, server.consumerStore, server.logger)

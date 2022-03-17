@@ -19,6 +19,7 @@ import (
 	aclcmd "github.com/davidsbond/arrebato/internal/proto/arrebato/acl/command/v1"
 	consumercmd "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/command/v1"
 	messagecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/message/command/v1"
+	signingcmd "github.com/davidsbond/arrebato/internal/proto/arrebato/signing/command/v1"
 	topiccmd "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/command/v1"
 )
 
@@ -204,7 +205,9 @@ func (svr *Server) Apply(log *raft.Log) interface{} {
 	case *consumercmd.SetTopicIndex:
 		return svr.consumerHandler.SetTopicIndex(ctx, payload)
 	case *aclcmd.SetACL:
-		return svr.aclHandler.SetACL(ctx, payload)
+		return svr.aclHandler.Set(ctx, payload)
+	case *signingcmd.CreatePublicKey:
+		return svr.signingHandler.Create(ctx, payload)
 	default:
 		return nil
 	}

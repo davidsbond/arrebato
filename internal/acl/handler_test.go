@@ -14,7 +14,7 @@ import (
 	"github.com/davidsbond/arrebato/internal/testutil"
 )
 
-func TestHandler_SetACL(t *testing.T) {
+func TestHandler_Set(t *testing.T) {
 	t.Parallel()
 	ctx := testutil.Context(t)
 
@@ -73,7 +73,7 @@ func TestHandler_SetACL(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
 			mock := &MockSetter{err: tc.Error}
-			err := acl.NewHandler(mock, hclog.NewNullLogger()).SetACL(ctx, tc.Command)
+			err := acl.NewHandler(mock, hclog.NewNullLogger()).Set(ctx, tc.Command)
 			if tc.Error != nil {
 				assert.True(t, errors.Is(err, tc.Error))
 				return

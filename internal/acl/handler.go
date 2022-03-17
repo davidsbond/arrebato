@@ -31,8 +31,8 @@ func NewHandler(setter Setter, logger hclog.Logger) *Handler {
 	}
 }
 
-// SetACL handles a command that modifies the current ACL state.
-func (h *Handler) SetACL(ctx context.Context, cmd *aclcmd.SetACL) error {
+// Set handles a command that modifies the current ACL state.
+func (h *Handler) Set(ctx context.Context, cmd *aclcmd.SetACL) error {
 	if err := h.acls.Set(ctx, cmd.GetAcl()); err != nil {
 		return fmt.Errorf("failed to set acl: %w", err)
 	}

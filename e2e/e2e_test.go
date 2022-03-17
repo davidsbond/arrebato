@@ -65,7 +65,7 @@ func (s *Suite) SetupSuite() {
 		return s.server.IsLeader()
 	}, time.Minute, time.Second)
 
-	keyPair, err := signing.NewKeyPair()
+	_, privateKey, err := signing.NewKeyPair()
 	require.NoError(s.T(), err)
 
 	s.cancel = cancel
@@ -74,7 +74,7 @@ func (s *Suite) SetupSuite() {
 			":5002",
 		},
 		ClientID:          "test-client",
-		MessageSigningKey: keyPair.Private,
+		MessageSigningKey: privateKey,
 	})
 
 	require.NoError(s.T(), err)
@@ -99,6 +99,9 @@ func (s *Suite) TestSuite() {
 			client: s.client,
 		},
 		&ACLSuite{
+			client: s.client,
+		},
+		&SigningSuite{
 			client: s.client,
 		},
 		// Keep the SnapshotSuite last as it requires stopping and restarting the
