@@ -97,6 +97,7 @@ func (svr *Server) serveGRPC(ctx context.Context) error {
 	svr.topicGRPC.Register(server, healthServer)
 	svr.aclGRPC.Register(server, healthServer)
 	svr.nodeGRPC.Register(server, healthServer)
+	svr.signingGRPC.Register(server, healthServer)
 
 	// Part of the gRPC health checking protocol states that the server should use an empty string as the key for
 	// the server's overall health status.

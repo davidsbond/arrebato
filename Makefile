@@ -11,7 +11,7 @@ proto-lint:
 	buf lint
 
 proto-breaking:
-	buf breaking --against '.git#branch=master'
+	buf breaking --against 'https://github.com/davidsbond/arrebato.git#branch=master'
 
 docker-compose: build
 	docker-compose down

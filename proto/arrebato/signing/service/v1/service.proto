@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/signing/service/v1;signingsvc";
+
+import "arrebato/signing/v1/signing.proto";
+
+// Package arrebato.signing.service.v1 provides the schema for the SigningService, which is used to manage signing keys within the
+// cluster.
+package arrebato.signing.service.v1;
+
+// The SigningService is a gRPC service that can manage signing keys within the cluster.
+service SigningService {
+  rpc CreateKeyPair(CreateKeyPairRequest) returns (CreateKeyPairResponse);
+  rpc GetPublicKey(GetPublicKeyRequest) returns (GetPublicKeyResponse);
+}
+
+message CreateKeyPairRequest {
+  string client_id = 1;
+}
+
+message CreateKeyPairResponse {
+  arrebato.signing.v1.KeyPair key_pair = 1;
+}
+
+message GetPublicKeyRequest {
+  string client_id = 1;
+}
+
+message GetPublicKeyResponse {
+  bytes public_key = 1;
+}

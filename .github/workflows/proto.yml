@@ -121,4 +121,7 @@ jobs:
           make install-protoc-plugins
 
       - name: Check for breaking changes
+        env:
+          BUF_INPUT_HTTPS_USERNAME: ${{ github.repository_owner }}
+          BUF_INPUT_HTTPS_PASSWORD: ${{ github.token }}
         run: make proto-breaking

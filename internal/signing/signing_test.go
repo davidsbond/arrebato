@@ -14,20 +14,20 @@ import (
 func TestSignProto(t *testing.T) {
 	t.Parallel()
 
-	keyPair, err := signing.NewKeyPair()
+	publicKey, privateKey, err := signing.NewKeyPair()
 	require.NoError(t, err)
 
 	message := structpb.NewStringValue("test")
 
 	var signedMessage []byte
 	t.Run("It should sign the proto encoded message", func(t *testing.T) {
-		signedMessage, err = signing.SignProto(message, keyPair.Private)
+		signedMessage, err = signing.SignProto(message, privateKey)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, signedMessage)
 	})
 
 	t.Run("The signed message should be verifiable using the public key", func(t *testing.T) {
-		verified, err := signing.Verify(signedMessage, keyPair.Public)
+		verified, err := signing.Verify(signedMessage, publicKey)
 		assert.True(t, verified)
 		assert.NoError(t, err)
 

@@ -1,5 +1,5 @@
-// Package signing provides functions for verifying proto-encoded messages using public-key encryption. This is done
-// specifically with Ed25519.
+// Package signing provides all functionality within arrebato regarding message signing. This includes both gRPC, raft
+// and data store interactions.
 package signing
 
 import (
@@ -11,31 +11,20 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type (
-	// The KeyPair type contains the public and private key pair used for signing and verifying signed messages.
-	KeyPair struct {
-		Public  []byte
-		Private []byte
-	}
-)
-
 // NewKeyPair generates a new public/private key pair for message signing.
-func NewKeyPair() (KeyPair, error) {
-	public, private, err := sign.GenerateKey(rand.Reader)
+func NewKeyPair() (public []byte, private []byte, err error) {
+	pu, pb, err := sign.GenerateKey(rand.Reader)
 	if err != nil {
-		return KeyPair{}, fmt.Errorf("failed to generate key: %w", err)
+		return nil, nil, fmt.Errorf("failed to generate key: %w", err)
 	}
 
-	return KeyPair{
-		Public:  public[:],
-		Private: private[:],
-	}, nil
+	return pu[:], pb[:], nil
 }
 
 // SignProto encodes the proto.Message and signs it using the private key, returning a base64-encoded signature. The
 // proto-encoding is not deterministic so there is no guarantee that the same message produces the exact same signature.
 // However, it is only important that the signature is verifiable against the public key, so the consistency of the
-// proto-encoding should not matter.
+// proto-encoding should not matter. Ed25519 is used to sign messages.
 //
 // Base64 encoding is used so that the signature can be safely transported via gRPC. The raw signature may contain
 // characters that don't play nicely with outbound gRPC requests.
