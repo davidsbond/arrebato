@@ -23,16 +23,18 @@ import (
 	messagecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/message/command/v1"
 	messagesvc "github.com/davidsbond/arrebato/internal/proto/arrebato/message/service/v1"
 	"github.com/davidsbond/arrebato/internal/proto/arrebato/message/v1"
+	"github.com/davidsbond/arrebato/internal/signing"
 )
 
 type (
 	// The GRPC type is a messagesvc.MessageServiceServer implementation that handles inbound gRPC requests to manage
 	// and query Messages.
 	GRPC struct {
-		executor  Executor
-		reader    Reader
-		consumers TopicIndexGetter
-		acl       ACL
+		executor   Executor
+		reader     Reader
+		consumers  TopicIndexGetter
+		publicKeys PublicKeyGetter
+		acl        ACL
 	}
 
 	// The Executor interface describes types that execute commands related to Message data.
@@ -64,12 +66,20 @@ type (
 		// within the server then it should always return true.
 		Allowed(ctx context.Context, topic, client string, permission acl.Permission) (bool, error)
 	}
+
+	// The PublicKeyGetter interface describes types that can obtain a client's public signing key.
+	PublicKeyGetter interface {
+		// Get should return the client's public signing key. If there is no key then it should return signing.ErrNoPublicKey.
+		Get(ctx context.Context, clientID string) ([]byte, error)
+	}
 )
 
 // NewGRPC returns a new instance of the GRPC type that will modify Message data via commands sent to the Executor and
-// read messages via the Reader implementation.
-func NewGRPC(executor Executor, reader Reader, consumers TopicIndexGetter, acl ACL) *GRPC {
-	return &GRPC{executor: executor, reader: reader, consumers: consumers, acl: acl}
+// read messages via the Reader implementation. The index of consumers will be obtained via the TopicIndexGetter implementation,
+// permissions will be checked using the ACL implementation and client's public signing keys are obtained via the
+// PublicKeyGetter implementation.
+func NewGRPC(executor Executor, reader Reader, consumers TopicIndexGetter, acl ACL, publicKeys PublicKeyGetter) *GRPC {
+	return &GRPC{executor: executor, reader: reader, consumers: consumers, acl: acl, publicKeys: publicKeys}
 }
 
 // Register the GRPC service onto the grpc.ServiceRegistrar.
@@ -89,6 +99,18 @@ func (svr *GRPC) Produce(ctx context.Context, request *messagesvc.ProduceRequest
 		return nil, status.Errorf(codes.PermissionDenied, "cannot produce messages on topic %s", request.GetMessage().GetTopic())
 	}
 
+	var verified bool
+	if request.GetMessage().GetKey() != nil {
+		verified, err = svr.verifySignature(ctx, info, request.GetMessage())
+		switch {
+		case errors.Is(err, signing.ErrNoPublicKey):
+			// If there is no public key, we'll just mark the message as unverified
+			break
+		case err != nil:
+			return nil, status.Errorf(codes.Internal, "failed to verify signature: %v", err)
+		}
+	}
+
 	cmd := command.New(&messagecmd.CreateMessage{
 		Message: &message.Message{
 			Topic:     request.GetMessage().GetTopic(),
@@ -96,7 +118,9 @@ func (svr *GRPC) Produce(ctx context.Context, request *messagesvc.ProduceRequest
 			Value:     request.GetMessage().GetValue(),
 			Timestamp: timestamppb.Now(),
 			Sender: &message.Sender{
-				Id: info.ID,
+				Id:           info.ID,
+				KeySignature: request.GetMessage().GetSender().GetKeySignature(),
+				Verified:     verified,
 			},
 		},
 	})
@@ -192,4 +216,17 @@ func (svr *GRPC) canProduce(ctx context.Context, info clientinfo.ClientInfo, top
 		info.ID,
 		acl.Permission_PERMISSION_PRODUCE,
 	)
+}
+
+func (svr *GRPC) verifySignature(ctx context.Context, clientInfo clientinfo.ClientInfo, msg *message.Message) (bool, error) {
+	if msg.GetSender() == nil {
+		return false, nil
+	}
+
+	publicKey, err := svr.publicKeys.Get(ctx, clientInfo.ID)
+	if err != nil {
+		return false, err
+	}
+
+	return signing.Verify(msg.GetSender().GetKeySignature(), publicKey), nil
 }

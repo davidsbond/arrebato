@@ -40,7 +40,16 @@ type (
 	MockACL struct {
 		allowed bool
 	}
+
+	MockPublicKeyGetter struct {
+		err error
+		key []byte
+	}
 )
+
+func (mm *MockPublicKeyGetter) Get(ctx context.Context, clientID string) ([]byte, error) {
+	return mm.key, mm.err
+}
 
 func (mm *MockACL) Allowed(ctx context.Context, topic, client string, permission acl.Permission) (bool, error) {
 	return mm.allowed, nil

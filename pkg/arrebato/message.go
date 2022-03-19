@@ -19,8 +19,9 @@ type (
 
 	// The Sender type describes the client that produced a message.
 	Sender struct {
-		ID       string
-		Verified bool
+		ID           string
+		Verified     bool
+		KeySignature []byte
 	}
 )
 

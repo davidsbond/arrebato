@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
 	messagesvc "github.com/davidsbond/arrebato/internal/proto/arrebato/message/service/v1"
+	"github.com/davidsbond/arrebato/internal/proto/arrebato/message/v1"
 	"github.com/davidsbond/arrebato/internal/signing"
 )
 
@@ -39,6 +39,7 @@ func (p *Producer) Produce(ctx context.Context, m Message) error {
 	}
 
 	msg.Topic = p.topic
+	msg.Sender = &message.Sender{}
 
 	// If we have both a message key and a private key, we'll include the message key signature in the outgoing
 	// request metadata. This is used by the server to verify the identity of the client, and tell consumers that
@@ -49,7 +50,7 @@ func (p *Producer) Produce(ctx context.Context, m Message) error {
 			return fmt.Errorf("failed to sign message key: %w", err)
 		}
 
-		ctx = metadata.AppendToOutgoingContext(ctx, "X-Key-Signature", string(signature))
+		msg.Sender.KeySignature = signature
 	}
 
 	svc := messagesvc.NewMessageServiceClient(p.cluster.leader())

@@ -27,12 +27,7 @@ func TestSignProto(t *testing.T) {
 	})
 
 	t.Run("The signed message should be verifiable using the public key", func(t *testing.T) {
-		verified, err := signing.Verify(signedMessage, publicKey)
-		assert.True(t, verified)
-		assert.NoError(t, err)
-
-		verified, err = signing.Verify(signedMessage, bytes.Repeat([]byte("a"), 32))
-		assert.False(t, verified)
-		assert.NoError(t, err)
+		assert.True(t, signing.Verify(signedMessage, publicKey))
+		assert.False(t, signing.Verify(signedMessage, bytes.Repeat([]byte("a"), 32)))
 	})
 }
