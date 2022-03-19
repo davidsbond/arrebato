@@ -24,9 +24,6 @@ func NewKeyPair() (public []byte, private []byte, err error) {
 // proto-encoding is not deterministic so there is no guarantee that the same message produces the exact same signature.
 // However, it is only important that the signature is verifiable against the public key, so the consistency of the
 // proto-encoding should not matter. Ed25519 is used to sign messages.
-//
-// Base64 encoding is used so that the signature can be safely transported via gRPC. The raw signature may contain
-// characters that don't play nicely with outbound gRPC requests.
 func SignProto(m proto.Message, privateKey []byte) ([]byte, error) {
 	data, err := proto.Marshal(m)
 	if err != nil {
