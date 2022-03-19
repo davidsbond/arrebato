@@ -87,8 +87,9 @@ func TestGRPC_Produce(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
 			executor := &MockExecutor{err: tc.Error}
+			publicKeys := &MockPublicKeyGetter{}
 
-			resp, err := message.NewGRPC(executor, nil, nil, &MockACL{allowed: tc.ACLAllow}).Produce(ctx, tc.Request)
+			resp, err := message.NewGRPC(executor, nil, nil, &MockACL{allowed: tc.ACLAllow}, publicKeys).Produce(ctx, tc.Request)
 			require.EqualValues(t, tc.ExpectedCode, status.Code(err))
 
 			if tc.Error != nil || tc.ExpectedCode > codes.OK {
@@ -165,7 +166,7 @@ func TestGRPC_Consume(t *testing.T) {
 			reader := &MockReader{messages: tc.SeedTopic, err: tc.Error}
 			consumers := &MockTopicIndexGetter{}
 
-			err := message.NewGRPC(nil, reader, consumers, &MockACL{allowed: tc.ACLAllow}).Consume(tc.Request, stream)
+			err := message.NewGRPC(nil, reader, consumers, &MockACL{allowed: tc.ACLAllow}, nil).Consume(tc.Request, stream)
 			require.EqualValues(t, tc.ExpectedCode, status.Code(err))
 
 			if tc.Error != nil || tc.ExpectedCode > codes.OK {

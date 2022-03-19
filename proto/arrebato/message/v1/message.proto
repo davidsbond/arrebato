@@ -38,4 +38,7 @@ message Sender {
   // Whether or not the client provided the signed message key which has been verified by the server. This is used
   // to confirm the sender is indeed who they claim to be.
   bool verified = 2;
+
+  // The client-generated signature of the message key.
+  bytes key_signature = 3;
 }

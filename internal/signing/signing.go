@@ -4,7 +4,6 @@ package signing
 
 import (
 	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 
 	"golang.org/x/crypto/nacl/sign"
@@ -21,7 +20,7 @@ func NewKeyPair() (public []byte, private []byte, err error) {
 	return pu[:], pb[:], nil
 }
 
-// SignProto encodes the proto.Message and signs it using the private key, returning a base64-encoded signature. The
+// SignProto encodes the proto.Message and signs it using the private key, returning a signature. The
 // proto-encoding is not deterministic so there is no guarantee that the same message produces the exact same signature.
 // However, it is only important that the signature is verifiable against the public key, so the consistency of the
 // proto-encoding should not matter. Ed25519 is used to sign messages.
@@ -37,24 +36,14 @@ func SignProto(m proto.Message, privateKey []byte) ([]byte, error) {
 	var arr [64]byte
 	copy(arr[:], privateKey[:64])
 
-	signature := sign.Sign(nil, data, &arr)
-	out := make([]byte, base64.StdEncoding.EncodedLen(len(signature)))
-	base64.StdEncoding.Encode(out, signature)
-
-	return out, nil
+	return sign.Sign(nil, data, &arr), nil
 }
 
-// Verify a base64-encoded signature against the public key.
-func Verify(signature []byte, publicKey []byte) (bool, error) {
+// Verify a signature against the public key.
+func Verify(signature []byte, publicKey []byte) bool {
 	var arr [32]byte
 	copy(arr[:], publicKey[:32])
 
-	dst := make([]byte, base64.StdEncoding.DecodedLen(len(signature)))
-	n, err := base64.StdEncoding.Decode(dst, signature)
-	if err != nil {
-		return false, fmt.Errorf("failed to decode signature: %w", err)
-	}
-
-	_, ok := sign.Open(nil, dst[:n], &arr)
-	return ok, nil
+	_, ok := sign.Open(nil, signature, &arr)
+	return ok
 }

@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/davidsbond/arrebato/internal/server"
-	"github.com/davidsbond/arrebato/internal/signing"
 	"github.com/davidsbond/arrebato/pkg/arrebato"
 )
 
@@ -65,16 +64,12 @@ func (s *Suite) SetupSuite() {
 		return s.server.IsLeader()
 	}, time.Minute, time.Second)
 
-	_, privateKey, err := signing.NewKeyPair()
-	require.NoError(s.T(), err)
-
 	s.cancel = cancel
 	s.client, err = arrebato.Dial(ctx, arrebato.Config{
 		Addresses: []string{
 			":5002",
 		},
-		ClientID:          "test-client",
-		MessageSigningKey: privateKey,
+		ClientID: "test-client",
 	})
 
 	require.NoError(s.T(), err)
@@ -98,10 +93,10 @@ func (s *Suite) TestSuite() {
 		&MessageSuite{
 			client: s.client,
 		},
-		&ACLSuite{
+		&SigningSuite{
 			client: s.client,
 		},
-		&SigningSuite{
+		&ACLSuite{
 			client: s.client,
 		},
 		// Keep the SnapshotSuite last as it requires stopping and restarting the
