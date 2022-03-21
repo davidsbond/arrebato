@@ -72,6 +72,7 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
           args:
+            - server
             - --peers=arrebato-0.arrebato-cluster.$(NAMESPACE).svc.cluster.local
             - --advertise-address=$(POD_NAME).arrebato-cluster.$(NAMESPACE).svc.cluster.local
             - --log-level=5
