@@ -24,6 +24,9 @@ type (
 
 		// The maximum age of a consumer index on a Topic before it is reset to zero.
 		ConsumerRetentionPeriod time.Duration
+
+		// If true, any attempts to publish an unverified message onto this topic will fail.
+		RequireVerifiedMessages bool
 	}
 )
 
@@ -44,6 +47,7 @@ func (c *Client) CreateTopic(ctx context.Context, t Topic) error {
 			Name:                    t.Name,
 			MessageRetentionPeriod:  durationpb.New(t.MessageRetentionPeriod),
 			ConsumerRetentionPeriod: durationpb.New(t.ConsumerRetentionPeriod),
+			RequireVerifiedMessages: t.RequireVerifiedMessages,
 		},
 	})
 	switch {
@@ -75,6 +79,7 @@ func (c *Client) Topic(ctx context.Context, name string) (Topic, error) {
 			Name:                    resp.GetTopic().GetName(),
 			MessageRetentionPeriod:  resp.GetTopic().GetMessageRetentionPeriod().AsDuration(),
 			ConsumerRetentionPeriod: resp.GetTopic().GetConsumerRetentionPeriod().AsDuration(),
+			RequireVerifiedMessages: resp.GetTopic().GetRequireVerifiedMessages(),
 		}, nil
 	}
 }
@@ -93,6 +98,7 @@ func (c *Client) Topics(ctx context.Context) ([]Topic, error) {
 			Name:                    tp.GetName(),
 			MessageRetentionPeriod:  tp.GetMessageRetentionPeriod().AsDuration(),
 			ConsumerRetentionPeriod: tp.GetConsumerRetentionPeriod().AsDuration(),
+			RequireVerifiedMessages: tp.GetRequireVerifiedMessages(),
 		}
 	}
 

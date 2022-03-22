@@ -23,7 +23,9 @@ import (
 	messagecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/message/command/v1"
 	messagesvc "github.com/davidsbond/arrebato/internal/proto/arrebato/message/service/v1"
 	"github.com/davidsbond/arrebato/internal/proto/arrebato/message/v1"
+	topicpb "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/v1"
 	"github.com/davidsbond/arrebato/internal/signing"
+	"github.com/davidsbond/arrebato/internal/topic"
 )
 
 type (
@@ -34,6 +36,7 @@ type (
 		reader     Reader
 		consumers  TopicIndexGetter
 		publicKeys PublicKeyGetter
+		topics     TopicGetter
 		acl        ACL
 	}
 
@@ -72,14 +75,27 @@ type (
 		// Get should return the client's public signing key. If there is no key then it should return signing.ErrNoPublicKey.
 		Get(ctx context.Context, clientID string) ([]byte, error)
 	}
+
+	// The TopicGetter interface describes types that can obtain details on a specific topic.
+	TopicGetter interface {
+		// Get should return the named topic. It should return topic.ErrNoTopic if the topic does not exist.
+		Get(ctx context.Context, name string) (*topicpb.Topic, error)
+	}
 )
 
 // NewGRPC returns a new instance of the GRPC type that will modify Message data via commands sent to the Executor and
 // read messages via the Reader implementation. The index of consumers will be obtained via the TopicIndexGetter implementation,
-// permissions will be checked using the ACL implementation and client's public signing keys are obtained via the
-// PublicKeyGetter implementation.
-func NewGRPC(executor Executor, reader Reader, consumers TopicIndexGetter, acl ACL, publicKeys PublicKeyGetter) *GRPC {
-	return &GRPC{executor: executor, reader: reader, consumers: consumers, acl: acl, publicKeys: publicKeys}
+// permissions will be checked using the ACL implementation, topic details will be obtained via the TopicGetter implementation
+// and client's public signing keys are obtained via the PublicKeyGetter implementation.
+func NewGRPC(executor Executor, reader Reader, consumers TopicIndexGetter, acl ACL, publicKeys PublicKeyGetter, topics TopicGetter) *GRPC {
+	return &GRPC{
+		executor:   executor,
+		reader:     reader,
+		consumers:  consumers,
+		acl:        acl,
+		publicKeys: publicKeys,
+		topics:     topics,
+	}
 }
 
 // Register the GRPC service onto the grpc.ServiceRegistrar.
@@ -109,6 +125,16 @@ func (svr *GRPC) Produce(ctx context.Context, request *messagesvc.ProduceRequest
 		case err != nil:
 			return nil, status.Errorf(codes.Internal, "failed to verify signature: %v", err)
 		}
+	}
+
+	tp, err := svr.topics.Get(ctx, request.GetMessage().GetTopic())
+	switch {
+	case errors.Is(err, topic.ErrNoTopic):
+		return nil, status.Errorf(codes.NotFound, "topic %s does not exist", request.GetMessage().GetTopic())
+	case err != nil:
+		return nil, status.Errorf(codes.Internal, "failed to query topic: %v", err)
+	case tp.GetRequireVerifiedMessages() && !verified:
+		return nil, status.Errorf(codes.PermissionDenied, "topic %s only allows verified messages", request.GetMessage().GetTopic())
 	}
 
 	cmd := command.New(&messagecmd.CreateMessage{

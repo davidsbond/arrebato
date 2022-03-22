@@ -9,6 +9,7 @@ import (
 	consumerpb "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/v1"
 	messagesvc "github.com/davidsbond/arrebato/internal/proto/arrebato/message/service/v1"
 	messabepb "github.com/davidsbond/arrebato/internal/proto/arrebato/message/v1"
+	topicpb "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/v1"
 )
 
 type (
@@ -45,7 +46,15 @@ type (
 		err error
 		key []byte
 	}
+
+	MockTopicGetter struct {
+		topic *topicpb.Topic
+	}
 )
+
+func (mm *MockTopicGetter) Get(ctx context.Context, name string) (*topicpb.Topic, error) {
+	return mm.topic, nil
+}
 
 func (mm *MockPublicKeyGetter) Get(ctx context.Context, clientID string) ([]byte, error) {
 	return mm.key, mm.err

@@ -169,7 +169,14 @@ func New(config Config) (*Server, error) {
 	// Message stack
 	server.messageStore = message.NewBoltStore(server.store)
 	server.messageHandler = message.NewHandler(server.messageStore, server.logger)
-	server.messageGRPC = message.NewGRPC(executor, server.messageStore, server.consumerStore, server.aclStore, server.signingStore)
+	server.messageGRPC = message.NewGRPC(
+		executor,
+		server.messageStore,
+		server.consumerStore,
+		server.aclStore,
+		server.signingStore,
+		server.topicStore,
+	)
 
 	// Pruning stack
 	server.pruner = prune.New(server.topicStore, server.messageStore, server.consumerStore, server.logger)
