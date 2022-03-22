@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -64,8 +66,10 @@ func createTopic() *cobra.Command {
 }
 
 func createSigningKey() *cobra.Command {
-	return &cobra.Command{
-		Use:   "signing-key",
+	var jsonOut bool
+
+	cmd := &cobra.Command{
+		Use:   "signing-key [flags]",
 		Short: "Create a new signing key pair",
 		Long:  "This command creates a new signing key pair for this client to use when producing messages",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -79,10 +83,19 @@ func createSigningKey() *cobra.Command {
 				return err
 			}
 
+			if jsonOut {
+				return json.NewEncoder(os.Stdout).Encode(keyPair)
+			}
+
 			fmt.Printf("Keys below are base64 encoded, they should be provided to the server decoded.\n\n")
 			fmt.Printf("Public key:\t%s\n", base64.StdEncoding.EncodeToString(keyPair.PublicKey))
 			fmt.Printf("Private key:\t%s\n", base64.StdEncoding.EncodeToString(keyPair.PrivateKey))
 			return nil
 		},
 	}
+
+	flags := cmd.PersistentFlags()
+	flags.BoolVar(&jsonOut, "json", false, "Output signing key in JSON format")
+
+	return cmd
 }
