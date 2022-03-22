@@ -1,11 +1,14 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/davidsbond/arrebato/pkg/arrebato"
 )
 
 // Describe returns a command for describing various server resources.
@@ -31,13 +34,8 @@ func describeTopic() *cobra.Command {
 		Short: "Describe a topics",
 		Long:  "This command returns information about a single topic",
 		Args:  cobra.ExactValidArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := loadClient(cmd.Context())
-			if err != nil {
-				return err
-			}
-
-			topic, err := client.Topic(cmd.Context(), args[0])
+		RunE: withClient(func(ctx context.Context, client *arrebato.Client, args []string) error {
+			topic, err := client.Topic(ctx, args[0])
 			if err != nil {
 				return err
 			}
@@ -52,7 +50,7 @@ func describeTopic() *cobra.Command {
 			fmt.Println("Require Verified Messages:", topic.RequireVerifiedMessages)
 
 			return nil
-		},
+		}),
 	}
 
 	flags := cmd.PersistentFlags()

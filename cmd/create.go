@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -41,20 +42,15 @@ func createTopic() *cobra.Command {
 		Args:  cobra.ExactValidArgs(1),
 		Short: "Create a new topic",
 		Long:  "This command creates a new topic with the configuration provided by the CLI",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := loadClient(cmd.Context())
-			if err != nil {
-				return err
-			}
-
+		RunE: withClient(func(ctx context.Context, client *arrebato.Client, args []string) error {
 			name := args[0]
-			return client.CreateTopic(cmd.Context(), arrebato.Topic{
+			return client.CreateTopic(ctx, arrebato.Topic{
 				Name:                    name,
 				MessageRetentionPeriod:  messageRetentionPeriod,
 				ConsumerRetentionPeriod: consumerRetentionPeriod,
 				RequireVerifiedMessages: requireVerifiedMessages,
 			})
-		},
+		}),
 	}
 
 	flags := cmd.PersistentFlags()
@@ -72,13 +68,8 @@ func createSigningKey() *cobra.Command {
 		Use:   "signing-key [flags]",
 		Short: "Create a new signing key pair",
 		Long:  "This command creates a new signing key pair for this client to use when producing messages",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := loadClient(cmd.Context())
-			if err != nil {
-				return err
-			}
-
-			keyPair, err := client.CreateSigningKeyPair(cmd.Context())
+		RunE: withClient(func(ctx context.Context, client *arrebato.Client, args []string) error {
+			keyPair, err := client.CreateSigningKeyPair(ctx)
 			if err != nil {
 				return err
 			}
@@ -91,7 +82,7 @@ func createSigningKey() *cobra.Command {
 			fmt.Printf("Public key:\t%s\n", base64.StdEncoding.EncodeToString(keyPair.PublicKey))
 			fmt.Printf("Private key:\t%s\n", base64.StdEncoding.EncodeToString(keyPair.PrivateKey))
 			return nil
-		},
+		}),
 	}
 
 	flags := cmd.PersistentFlags()
