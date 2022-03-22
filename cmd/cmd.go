@@ -9,6 +9,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/davidsbond/arrebato/pkg/arrebato"
 )
 
@@ -42,4 +44,15 @@ func loadClient(ctx context.Context) (*arrebato.Client, error) {
 	}
 
 	return arrebato.Dial(ctx, config)
+}
+
+func withClient(fn func(ctx context.Context, client *arrebato.Client, args []string) error) func(command *cobra.Command, args []string) error {
+	return func(command *cobra.Command, args []string) error {
+		client, err := loadClient(command.Context())
+		if err != nil {
+			return err
+		}
+
+		return fn(command.Context(), client, args)
+	}
 }

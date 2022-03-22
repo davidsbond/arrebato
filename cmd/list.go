@@ -1,11 +1,14 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/davidsbond/arrebato/pkg/arrebato"
 )
 
 // List returns a command for listing various server resources.
@@ -30,13 +33,8 @@ func listTopics() *cobra.Command {
 		Use:   "topics [flags]",
 		Short: "List all topics",
 		Long:  "This command returns a list of all topics within the server",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := loadClient(cmd.Context())
-			if err != nil {
-				return err
-			}
-
-			topics, err := client.Topics(cmd.Context())
+		RunE: withClient(func(ctx context.Context, client *arrebato.Client, args []string) error {
+			topics, err := client.Topics(ctx)
 			if err != nil {
 				return err
 			}
@@ -55,7 +53,7 @@ func listTopics() *cobra.Command {
 			}
 
 			return nil
-		},
+		}),
 	}
 
 	flags := cmd.PersistentFlags()
