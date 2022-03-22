@@ -28,7 +28,7 @@ jobs:
           echo "::set-output name=module::$(go env GOMODCACHE)"
 
       - name: Set up cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ${{ steps.cache.outputs.build }}
@@ -68,7 +68,7 @@ jobs:
           echo "::set-output name=module::$(go env GOMODCACHE)"
 
       - name: Set up cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ${{ steps.cache.outputs.build }}
@@ -106,7 +106,7 @@ jobs:
           echo "::set-output name=module::$(go env GOMODCACHE)"
 
       - name: Set up cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ${{ steps.cache.outputs.build }}
