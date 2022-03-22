@@ -3,7 +3,7 @@ module github.com/davidsbond/arrebato
 go 1.18
 
 require (
-	github.com/anchore/syft v0.42.0
+	github.com/anchore/syft v0.42.1
 	github.com/armon/go-metrics v0.3.10
 	github.com/bufbuild/buf v1.1.0
 	github.com/golangci/golangci-lint v1.45.0
@@ -72,7 +72,7 @@ require (
 	github.com/anchore/go-rpmdb v0.0.0-20210914181456-a9c52348da63 // indirect
 	github.com/anchore/go-version v1.2.2-0.20200701162849-18adb9c92b9b // indirect
 	github.com/anchore/packageurl-go v0.1.1-0.20220314153042-1bcd40e5206b // indirect
-	github.com/anchore/stereoscope v0.0.0-20220315185520-25183ec78f40 // indirect
+	github.com/anchore/stereoscope v0.0.0-20220321131953-5e4083dd6a09 // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/antihax/optional v1.0.0 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
