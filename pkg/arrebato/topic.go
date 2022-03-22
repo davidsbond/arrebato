@@ -17,16 +17,16 @@ type (
 	// The Topic type describes a topic stored within the cluster.
 	Topic struct {
 		// The Name of the Topic.
-		Name string
+		Name string `json:"name"`
 
 		// The amount of time messages on the Topic will be stored.
-		MessageRetentionPeriod time.Duration
+		MessageRetentionPeriod time.Duration `json:"messageRetentionPeriod"`
 
 		// The maximum age of a consumer index on a Topic before it is reset to zero.
-		ConsumerRetentionPeriod time.Duration
+		ConsumerRetentionPeriod time.Duration `json:"consumerRetentionPeriod"`
 
 		// If true, any attempts to publish an unverified message onto this topic will fail.
-		RequireVerifiedMessages bool
+		RequireVerifiedMessages bool `json:"requireVerifiedMessages"`
 	}
 )
 

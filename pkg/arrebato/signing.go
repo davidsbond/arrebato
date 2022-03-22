@@ -13,8 +13,8 @@ import (
 type (
 	// The KeyPair type contains the public and private signing keys for the client to use when producing messages.
 	KeyPair struct {
-		PublicKey  []byte
-		PrivateKey []byte
+		PublicKey  []byte `json:"publicKey"`
+		PrivateKey []byte `json:"privateKey"`
 	}
 )
 

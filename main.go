@@ -29,10 +29,12 @@ func main() {
 			"  ARREBATO_TLS_KEY         The location of the client private key",
 	}
 
+	command.SetErr(os.Stderr)
 	command.AddCommand(
 		cmd.Server(),
 		cmd.Create(),
 		cmd.List(),
+		cmd.Describe(),
 	)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)

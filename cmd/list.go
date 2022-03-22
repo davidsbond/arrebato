@@ -27,7 +27,7 @@ func listTopics() *cobra.Command {
 	var jsonOut bool
 
 	cmd := &cobra.Command{
-		Use:   "topics",
+		Use:   "topics [flags]",
 		Short: "List all topics",
 		Long:  "This command returns a list of all topics within the server",
 		RunE: func(cmd *cobra.Command, args []string) error {
