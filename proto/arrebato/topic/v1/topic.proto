@@ -13,6 +13,8 @@ message Topic {
   string name = 1;
   // The amount of time a message will exist on a topic until it is deleted.
   google.protobuf.Duration message_retention_period = 2;
-  // The amount of time a consumer will exist on a topic without updating its index until it is deleted
+  // The amount of time a consumer will exist on a topic without updating its index until it is deleted.
   google.protobuf.Duration consumer_retention_period = 3;
+  // Determines whether or not unverified messages are rejected for this topic.
+  bool require_verified_messages = 4;
 }

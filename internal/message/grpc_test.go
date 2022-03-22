@@ -16,6 +16,7 @@ import (
 	messagecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/message/command/v1"
 	messagesvc "github.com/davidsbond/arrebato/internal/proto/arrebato/message/service/v1"
 	messagepb "github.com/davidsbond/arrebato/internal/proto/arrebato/message/v1"
+	topicpb "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/v1"
 	"github.com/davidsbond/arrebato/internal/testutil"
 )
 
@@ -24,12 +25,13 @@ func TestGRPC_Produce(t *testing.T) {
 	ctx := testutil.Context(t)
 
 	tt := []struct {
-		Name         string
-		Request      *messagesvc.ProduceRequest
-		ACLAllow     bool
-		ExpectedCode codes.Code
-		Error        error
-		Expected     command.Command
+		Name            string
+		Request         *messagesvc.ProduceRequest
+		RequireVerified bool
+		ACLAllow        bool
+		ExpectedCode    codes.Code
+		Error           error
+		Expected        command.Command
 	}{
 		{
 			Name:     "It should execute a command to create a message",
@@ -82,14 +84,37 @@ func TestGRPC_Produce(t *testing.T) {
 			},
 			ExpectedCode: codes.PermissionDenied,
 		},
+		{
+			Name:            "It should return permission denied if the message is not verified and the topic requires it",
+			RequireVerified: true,
+			ACLAllow:        true,
+			Request: &messagesvc.ProduceRequest{
+				Message: &messagepb.Message{
+					Topic: "test-topic",
+					Value: testutil.Any(t, timestamppb.New(time.Time{})),
+					Key:   testutil.Any(t, timestamppb.New(time.Time{})),
+				},
+			},
+			ExpectedCode: codes.PermissionDenied,
+		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
 			executor := &MockExecutor{err: tc.Error}
 			publicKeys := &MockPublicKeyGetter{}
+			topics := &MockTopicGetter{topic: &topicpb.Topic{RequireVerifiedMessages: tc.RequireVerified}}
 
-			resp, err := message.NewGRPC(executor, nil, nil, &MockACL{allowed: tc.ACLAllow}, publicKeys).Produce(ctx, tc.Request)
+			svc := message.NewGRPC(
+				executor,
+				nil,
+				nil,
+				&MockACL{allowed: tc.ACLAllow},
+				publicKeys,
+				topics,
+			)
+
+			resp, err := svc.Produce(ctx, tc.Request)
 			require.EqualValues(t, tc.ExpectedCode, status.Code(err))
 
 			if tc.Error != nil || tc.ExpectedCode > codes.OK {
@@ -166,7 +191,7 @@ func TestGRPC_Consume(t *testing.T) {
 			reader := &MockReader{messages: tc.SeedTopic, err: tc.Error}
 			consumers := &MockTopicIndexGetter{}
 
-			err := message.NewGRPC(nil, reader, consumers, &MockACL{allowed: tc.ACLAllow}, nil).Consume(tc.Request, stream)
+			err := message.NewGRPC(nil, reader, consumers, &MockACL{allowed: tc.ACLAllow}, nil, nil).Consume(tc.Request, stream)
 			require.EqualValues(t, tc.ExpectedCode, status.Code(err))
 
 			if tc.Error != nil || tc.ExpectedCode > codes.OK {

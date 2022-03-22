@@ -47,6 +47,7 @@ func (s *SigningSuite) TestKeys() {
 		Name:                    "signing-topic",
 		MessageRetentionPeriod:  time.Hour,
 		ConsumerRetentionPeriod: time.Hour,
+		RequireVerifiedMessages: true,
 	}))
 
 	// We need a fresh client so we can set the signing key
