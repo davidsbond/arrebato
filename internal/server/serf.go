@@ -43,7 +43,16 @@ func setupSerf(config Config, logger hclog.Logger) (<-chan serf.Event, *serf.Ser
 		return nil, nil, err
 	}
 
-	if len(config.Peers) > 0 {
+	peers := make([]string, 0)
+	for _, peer := range config.Peers {
+		if peer == config.AdvertiseAddress {
+			continue
+		}
+
+		peers = append(peers, peer)
+	}
+
+	if len(peers) > 0 {
 		if _, err = s.Join(config.Peers, false); err != nil {
 			return nil, nil, fmt.Errorf("failed to join: %w", err)
 		}
