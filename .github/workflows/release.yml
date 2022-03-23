@@ -43,6 +43,7 @@ jobs:
         run: |
           make install-kustomize
           make install-syft
+          make install-goreleaser
 
       - name: Docker Login
         uses: docker/login-action@v1
@@ -58,11 +59,8 @@ jobs:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v2
-        with:
-          version: latest
-          args: release --rm-dist
+      - name: Publish Release
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+        run: make release

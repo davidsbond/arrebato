@@ -33,7 +33,10 @@ format:
 snapshot:
 	goreleaser release --snapshot --rm-dist
 
-install-tools: install-buf install-kustomize install-protoc-plugins install-golangci-lint install-gofumpt install-bbolt install-syft install-kubeval
+release:
+	goreleaser release --rm-dist
+
+install-tools: install-buf install-kustomize install-protoc-plugins install-golangci-lint install-gofumpt install-bbolt install-syft install-kubeval install-goreleaser
 
 kustomize:
 	kustomize build deploy/kustomize -o install.yaml
@@ -43,6 +46,9 @@ install-kustomize:
 
 install-syft:
 	go install github.com/anchore/syft
+
+install-goreleaser:
+	go install github.com/goreleaser/goreleaser
 
 install-protoc-plugins:
 	go install \
