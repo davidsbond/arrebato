@@ -25,14 +25,14 @@ func setupSerf(config Config, logger hclog.Logger) (<-chan serf.Event, *serf.Ser
 	memberlistConfig.AdvertiseAddr = config.AdvertiseAddress
 	memberlistConfig.AdvertisePort = config.Serf.Port
 	memberlistConfig.Logger = logger.StandardLogger(&hclog.StandardLoggerOptions{
-		InferLevels: true,
+		InferLevelsWithTimestamp: true,
 	})
 
 	serfEvents := make(chan serf.Event, 1)
 	serfAddress := fmt.Sprint(config.AdvertiseAddress, ":", config.Serf.Port)
 	serfConfig := serf.DefaultConfig()
 	serfConfig.Logger = logger.StandardLogger(&hclog.StandardLoggerOptions{
-		InferLevels: true,
+		InferLevelsWithTimestamp: true,
 	})
 
 	serfConfig.EventCh = serfEvents
