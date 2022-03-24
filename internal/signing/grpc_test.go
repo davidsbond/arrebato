@@ -27,10 +27,8 @@ func TestGRPC_CreateKeyPair(t *testing.T) {
 		Expected     command.Command
 	}{
 		{
-			Name: "It should generate a new signing key pair",
-			Request: &signingsvc.CreateKeyPairRequest{
-				ClientId: "test-client",
-			},
+			Name:    "It should generate a new signing key pair",
+			Request: &signingsvc.CreateKeyPairRequest{},
 			ClientInfo: clientinfo.ClientInfo{
 				ID: "test-client",
 			},
@@ -39,10 +37,8 @@ func TestGRPC_CreateKeyPair(t *testing.T) {
 			}),
 		},
 		{
-			Name: "It should return codes.FailedPrecondition if the node is not the leader",
-			Request: &signingsvc.CreateKeyPairRequest{
-				ClientId: "test-client",
-			},
+			Name:    "It should return codes.FailedPrecondition if the node is not the leader",
+			Request: &signingsvc.CreateKeyPairRequest{},
 			ClientInfo: clientinfo.ClientInfo{
 				ID: "test-client",
 			},
@@ -50,10 +46,8 @@ func TestGRPC_CreateKeyPair(t *testing.T) {
 			ExpectedCode: codes.FailedPrecondition,
 		},
 		{
-			Name: "It should return codes.AlreadyExists if the client already has a key pair",
-			Request: &signingsvc.CreateKeyPairRequest{
-				ClientId: "test-client",
-			},
+			Name:    "It should return codes.AlreadyExists if the client already has a key pair",
+			Request: &signingsvc.CreateKeyPairRequest{},
 			ClientInfo: clientinfo.ClientInfo{
 				ID: "test-client",
 			},

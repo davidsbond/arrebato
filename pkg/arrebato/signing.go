@@ -30,9 +30,7 @@ var (
 // CreateSigningKeyPair attempts to create a new KeyPair for a client.
 func (c *Client) CreateSigningKeyPair(ctx context.Context) (KeyPair, error) {
 	svc := signingsvc.NewSigningServiceClient(c.cluster.leader())
-	resp, err := svc.CreateKeyPair(ctx, &signingsvc.CreateKeyPairRequest{
-		ClientId: c.config.ClientID,
-	})
+	resp, err := svc.CreateKeyPair(ctx, &signingsvc.CreateKeyPairRequest{})
 	switch {
 	case status.Code(err) == codes.AlreadyExists:
 		return KeyPair{}, ErrSigningKeyExists

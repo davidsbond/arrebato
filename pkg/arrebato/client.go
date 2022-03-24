@@ -37,11 +37,6 @@ type (
 		// TLS, it is expected that the client certificate will contain a SPIFFE ID that the client will use to
 		// identify itself.
 		ClientID string
-
-		// An optional signing key used for messages. When producing messages, if both a message key and this signing
-		// key are present, a signature is sent to the server along with the message to verify the message was produced
-		// by this client.
-		MessageSigningKey []byte
 	}
 )
 
@@ -56,7 +51,6 @@ func DefaultConfig(addrs []string) Config {
 // Dial an arrebato cluster, returning a Client that can be used to perform requests against it.
 func Dial(ctx context.Context, config Config) (*Client, error) {
 	options := []grpc.DialOption{
-		grpc.WithBlock(),
 		grpc.WithDefaultCallOptions(
 			grpc.UseCompressor("gzip"),
 		),
@@ -99,14 +93,20 @@ func (c *Client) Close() error {
 
 func unaryClientInterceptor(clientID string) grpc.UnaryClientInterceptor {
 	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-		ctx = metadata.AppendToOutgoingContext(ctx, "X-Client-ID", clientID)
+		if clientID != "" {
+			ctx = metadata.AppendToOutgoingContext(ctx, "X-Client-ID", clientID)
+		}
+
 		return invoker(ctx, method, req, reply, cc, opts...)
 	}
 }
 
 func streamClientInterceptor(clientID string) grpc.StreamClientInterceptor {
 	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
-		ctx = metadata.AppendToOutgoingContext(ctx, "X-Client-ID", clientID)
+		if clientID != "" {
+			ctx = metadata.AppendToOutgoingContext(ctx, "X-Client-ID", clientID)
+		}
+
 		return streamer(ctx, desc, cc, method, opts...)
 	}
 }
