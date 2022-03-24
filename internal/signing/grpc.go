@@ -54,11 +54,8 @@ func (svr *GRPC) Register(registrar grpc.ServiceRegistrar, healthServer *health.
 // CreateKeyPair attmpts to create a new signing key pair for the client. It returns a codes.FailedPrecondition error code
 // if this node is not the leader, or a codes.AlreadyExists error code if the client already has a key pair. The private
 // key is not stored by the server and should be kept securely by the client.
-func (svr *GRPC) CreateKeyPair(ctx context.Context, request *signingsvc.CreateKeyPairRequest) (*signingsvc.CreateKeyPairResponse, error) {
+func (svr *GRPC) CreateKeyPair(ctx context.Context, _ *signingsvc.CreateKeyPairRequest) (*signingsvc.CreateKeyPairResponse, error) {
 	info := clientinfo.FromContext(ctx)
-	if info.ID != request.GetClientId() {
-		return nil, status.Errorf(codes.PermissionDenied, "client %s cannot create a key pair for client %s", info.ID, request.GetClientId())
-	}
 
 	publicKey, privateKey, err := NewKeyPair()
 	if err != nil {
@@ -66,7 +63,7 @@ func (svr *GRPC) CreateKeyPair(ctx context.Context, request *signingsvc.CreateKe
 	}
 
 	cmd := command.New(&signingcmd.CreatePublicKey{
-		ClientId:  request.GetClientId(),
+		ClientId:  info.ID,
 		PublicKey: publicKey,
 	})
 
@@ -75,7 +72,7 @@ func (svr *GRPC) CreateKeyPair(ctx context.Context, request *signingsvc.CreateKe
 	case errors.Is(err, command.ErrNotLeader):
 		return nil, status.Error(codes.FailedPrecondition, "this node is not the leader")
 	case errors.Is(err, ErrPublicKeyExists):
-		return nil, status.Errorf(codes.AlreadyExists, "a public key already exists for client %s", request.GetClientId())
+		return nil, status.Errorf(codes.AlreadyExists, "a public key already exists for client %s", info.ID)
 	case err != nil:
 		return nil, status.Errorf(codes.Internal, "failed to create key pair: %v", err)
 	default:

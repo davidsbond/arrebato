@@ -14,9 +14,7 @@ service SigningService {
   rpc GetPublicKey(GetPublicKeyRequest) returns (GetPublicKeyResponse);
 }
 
-message CreateKeyPairRequest {
-  string client_id = 1;
-}
+message CreateKeyPairRequest {}
 
 message CreateKeyPairResponse {
   arrebato.signing.v1.KeyPair key_pair = 1;

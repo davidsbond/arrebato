@@ -11,14 +11,14 @@ import (
 )
 
 type cluster struct {
-	mux         *sync.Mutex
+	mux         *sync.RWMutex
 	leaderNode  *grpc.ClientConn
 	connections []*grpc.ClientConn
 	idx         int
 }
 
 func newCluster(ctx context.Context, connections []*grpc.ClientConn) *cluster {
-	cl := &cluster{connections: connections, mux: &sync.Mutex{}}
+	cl := &cluster{connections: connections, mux: &sync.RWMutex{}}
 	cl.findLeader(ctx)
 
 	return cl
@@ -38,8 +38,8 @@ func (c *cluster) any() *grpc.ClientConn {
 }
 
 func (c *cluster) leader() *grpc.ClientConn {
-	c.mux.Lock()
-	defer c.mux.Unlock()
+	c.mux.RLock()
+	defer c.mux.RUnlock()
 	return c.leaderNode
 }
 

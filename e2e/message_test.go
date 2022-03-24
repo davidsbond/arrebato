@@ -35,7 +35,9 @@ func (s *MessageSuite) TestProduceConsumeMessages() {
 	expected := structpb.NewStringValue("hello-world")
 
 	s.Run("It should produce a message on a topic", func() {
-		producer := s.client.NewProducer("test-suite-topic")
+		producer := s.client.NewProducer(arrebato.ProducerConfig{
+			Topic: "test-suite-topic",
+		})
 
 		require.NoError(s.T(), producer.Produce(ctx, arrebato.Message{
 			Key:   structpb.NewStringValue("test-key"),
@@ -73,7 +75,9 @@ func (s *MessageSuite) TestProduceConsumeMessages() {
 	})
 
 	s.Run("It should produce many messages on a topic", func() {
-		producer := s.client.NewProducer("test-suite-topic")
+		producer := s.client.NewProducer(arrebato.ProducerConfig{
+			Topic: "test-suite-topic",
+		})
 
 		for i := 0; i < 1024; i++ {
 			expected = structpb.NewStringValue(strconv.Itoa(i))

@@ -50,16 +50,12 @@ func (s *SigningSuite) TestKeys() {
 		RequireVerifiedMessages: true,
 	}))
 
-	// We need a fresh client so we can set the signing key
-	client, err := arrebato.Dial(ctx, arrebato.Config{
-		Addresses:         []string{":5002"},
-		ClientID:          "test-client",
-		MessageSigningKey: keyPair.PrivateKey,
-	})
-	require.NoError(s.T(), err)
-
 	s.T().Run("It should sign the message if we provide a key", func(t *testing.T) {
-		producer := client.NewProducer("signing-topic")
+		producer := s.client.NewProducer(arrebato.ProducerConfig{
+			Topic:      "signing-topic",
+			SigningKey: keyPair.PrivateKey,
+		})
+
 		require.NoError(t, producer.Produce(ctx, arrebato.Message{
 			Value: structpb.NewStringValue("world"),
 			Key:   structpb.NewStringValue("hello"),
@@ -68,7 +64,7 @@ func (s *SigningSuite) TestKeys() {
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		consumer, err := client.NewConsumer(ctx, arrebato.ConsumerConfig{
+		consumer, err := s.client.NewConsumer(ctx, arrebato.ConsumerConfig{
 			Topic:      "signing-topic",
 			ConsumerID: "test-consumer",
 		})
