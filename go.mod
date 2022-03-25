@@ -29,7 +29,7 @@ require (
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0
 	google.golang.org/protobuf v1.28.0
 	mvdan.cc/gofumpt v0.3.1
-	sigs.k8s.io/kustomize/kustomize/v4 v4.5.2
+	sigs.k8s.io/kustomize/kustomize/v4 v4.5.3
 )
 
 require (
@@ -498,9 +498,9 @@ require (
 	mvdan.cc/lint v0.0.0-20170908181259-adc824a0674b // indirect
 	mvdan.cc/unparam v0.0.0-20211214103731-d0ef000c54e5 // indirect
 	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
-	sigs.k8s.io/kustomize/api v0.11.2 // indirect
-	sigs.k8s.io/kustomize/cmd/config v0.10.4 // indirect
-	sigs.k8s.io/kustomize/kyaml v0.13.3 // indirect
+	sigs.k8s.io/kustomize/api v0.11.3 // indirect
+	sigs.k8s.io/kustomize/cmd/config v0.10.5 // indirect
+	sigs.k8s.io/kustomize/kyaml v0.13.4 // indirect
 	sigs.k8s.io/release-utils v0.4.1-0.20220207182343-6dadf2228617 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
