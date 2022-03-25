@@ -1,12 +1,12 @@
 syntax = "proto3";
 
-option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/service/v1;topicsvc";
-
-import "arrebato/topic/v1/topic.proto";
-
 // Package arrebato.topic.service.v1 provides the schema for the TopicService, which is used to manage topics within the
 // cluster.
 package arrebato.topic.service.v1;
+
+import "arrebato/topic/v1/topic.proto";
+
+option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/service/v1;topicsvc";
 
 // The TopicService is a gRPC service that can manage topics within the cluster.
 service TopicService {
@@ -28,9 +28,7 @@ message CreateRequest {
 }
 
 // The CreateResponse message is the response DTO when calling TopicService.Create.
-message CreateResponse {
-
-}
+message CreateResponse {}
 
 // The DeleteRequest message is the request DTO when calling TopicService.Delete. It describes the topic to be deleted.
 message DeleteRequest {
@@ -39,9 +37,7 @@ message DeleteRequest {
 }
 
 // The DeleteResponse message is the response DTO when calling TopicService.Delete.
-message DeleteResponse {
-
-}
+message DeleteResponse {}
 
 // The GetRequest message is the request DTO when calling TopicService.Get. It describes the topic to get more information
 // about.
@@ -57,9 +53,7 @@ message GetResponse {
   arrebato.topic.v1.Topic topic = 1;
 }
 
-message ListRequest {
-
-}
+message ListRequest {}
 
 message ListResponse {
   repeated arrebato.topic.v1.Topic topics = 1;

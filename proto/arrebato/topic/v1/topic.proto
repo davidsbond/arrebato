@@ -1,11 +1,11 @@
 syntax = "proto3";
 
-option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/v1;topic";
+// Package arrebato.topic.v1 provides domain models for topics.
+package arrebato.topic.v1;
 
 import "google/protobuf/duration.proto";
 
-// Package arrebato.topic.v1 provides domain models for topics.
-package arrebato.topic.v1;
+option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/v1;topic";
 
 // The Topic message describes a single topic within the cluster.
 message Topic {

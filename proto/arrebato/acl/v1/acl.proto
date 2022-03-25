@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/acl/v1;acl";
-
 // Package arrebato.acl.v1 provides messages that describe access-control lists (ACLs) for clients wishing to consume
 // and produce messages on individual topics.
 package arrebato.acl.v1;
+
+option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/acl/v1;acl";
 
 // The ACL message describes the entire state of the access-control list.
 message ACL {

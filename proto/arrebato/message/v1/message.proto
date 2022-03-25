@@ -1,12 +1,12 @@
 syntax = "proto3";
 
-option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/message/v1;message";
+// Package arrebato.message.v1 provides domain models for messages.
+package arrebato.message.v1;
 
 import "google/protobuf/any.proto";
 import "google/protobuf/timestamp.proto";
 
-// Package arrebato.message.v1 provides domain models for messages.
-package arrebato.message.v1;
+option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/message/v1;message";
 
 // The Message message describes a single message stored within a topic.
 message Message {
