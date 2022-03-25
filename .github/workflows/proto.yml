@@ -50,6 +50,45 @@ jobs:
           git add .
           git diff --staged --exit-code
 
+  format:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.18.x'
+
+      - name: Get cache paths
+        id: cache
+        run: |
+          echo "::set-output name=build::$(go env GOCACHE)"
+          echo "::set-output name=module::$(go env GOMODCACHE)"
+
+      - name: Set up cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ steps.cache.outputs.build }}
+            ${{ steps.cache.outputs.module }}
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install tools
+        run: |
+          make install-buf
+
+      - name: Format proto files
+        run: make proto-format
+
+      - name: Check for uncommitted changes
+        run: |
+          git add .
+          git diff --staged --exit-code
+
   lint:
     runs-on: ubuntu-20.04
     steps:
@@ -89,6 +128,7 @@ jobs:
     needs:
       - lint
       - generate
+      - format
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout

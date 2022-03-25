@@ -1,12 +1,12 @@
 syntax = "proto3";
 
-option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/message/service/v1;messagesvc";
-
-import "arrebato/message/v1/message.proto";
-
 // Package arrebato.message.service.v1 provides the schema for the MessageService, which is used to consume and produce
 // messages.
 package arrebato.message.service.v1;
+
+import "arrebato/message/v1/message.proto";
+
+option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/message/service/v1;messagesvc";
 
 // The MessageService is a gRPC service that can manage read and write messages to the cluster.
 service MessageService {
@@ -24,9 +24,7 @@ message ProduceRequest {
 }
 
 // The ProduceResponse message is the response DTO when calling MessageService.Produce.
-message ProduceResponse {
-
-}
+message ProduceResponse {}
 
 // The ConsumeRequest message is the request DTO when calling MessageService.Consume. It describes the topic to consume
 // from and the name of the consumer.

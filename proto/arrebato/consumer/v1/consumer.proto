@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/v1;consumer";
+package arrebato.consumer.v1;
 
 import "google/protobuf/timestamp.proto";
 
-package arrebato.consumer.v1;
+option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/v1;consumer";
 
 message TopicIndex {
   string topic = 1;

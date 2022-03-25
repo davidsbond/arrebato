@@ -1,9 +1,9 @@
 syntax = "proto3";
 
-option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/signing/v1;signing";
-
 // Package arrebato.signing.v1 provides domain models for signing keys.
 package arrebato.signing.v1;
+
+option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/signing/v1;signing";
 
 // The KeyPair message describes a single public/private key pair used for message signing.
 message KeyPair {

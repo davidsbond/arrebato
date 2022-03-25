@@ -1,12 +1,12 @@
 syntax = "proto3";
 
-option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/service/v1;consumersvc";
-
-import "arrebato/consumer/v1/consumer.proto";
-
 // Package arrebato.consumer.service.v1 provides the schema for the ConsumerService, which is used to manage the state
 // of topic consumers.
 package arrebato.consumer.service.v1;
+
+import "arrebato/consumer/v1/consumer.proto";
+
+option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/service/v1;consumersvc";
 
 // The ConsumerService is a gRPC service that can manage the state of topic consumers.
 service ConsumerService {
@@ -22,6 +22,4 @@ message SetTopicIndexRequest {
 }
 
 // The SetTopicIndexResponse message is the response DTO when calling ConsumerService.SetTopicIndex.
-message SetTopicIndexResponse {
-
-}
+message SetTopicIndexResponse {}

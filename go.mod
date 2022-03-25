@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/anchore/syft v0.42.4
 	github.com/armon/go-metrics v0.3.10
-	github.com/bufbuild/buf v1.1.1
+	github.com/bufbuild/buf v1.2.1
 	github.com/golangci/golangci-lint v1.45.2
 	github.com/google/uuid v1.3.0
 	github.com/goreleaser/goreleaser v1.7.0
@@ -286,6 +286,7 @@ require (
 	github.com/jdxcode/netrc v0.0.0-20210204082910-926c7f70242a // indirect
 	github.com/jedisct1/go-minisign v0.0.0-20210703085342-c1f07ee84431 // indirect
 	github.com/jgautheron/goconst v1.5.1 // indirect
+	github.com/jhump/protocompile v0.0.0-20220209020618-b218a88181be // indirect
 	github.com/jhump/protoreflect v1.12.0 // indirect
 	github.com/jingyugao/rowserrcheck v1.1.1 // indirect
 	github.com/jinzhu/copier v0.3.2 // indirect
