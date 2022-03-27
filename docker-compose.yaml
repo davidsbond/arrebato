@@ -6,6 +6,7 @@ services:
     restart: on-failure
     command:
       - server
+      - --log-level=2
     networks:
       - default
 
@@ -16,6 +17,7 @@ services:
     command:
       - server
       - --peers=arrebato-0
+      - --log-level=2
     depends_on:
       - arrebato-0
     networks:
@@ -28,6 +30,7 @@ services:
     command:
       - server
       - --peers=arrebato-0
+      - --log-level=2
     depends_on:
       - arrebato-0
     networks:
