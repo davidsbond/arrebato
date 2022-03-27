@@ -118,6 +118,7 @@ func (svr *Server) handleSerfEventMemberLeave(ctx context.Context, event serf.Me
 			return ctx.Err()
 		}
 
+		svr.logger.Info("removing server", "name", member.Name)
 		if err := svr.raft.RemoveServer(raft.ServerID(member.Name), 0, svr.config.Raft.Timeout).Error(); err != nil {
 			return fmt.Errorf("failed to remove voter %s: %w", member.Name, err)
 		}

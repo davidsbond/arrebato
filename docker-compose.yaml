@@ -3,21 +3,25 @@ services:
   arrebato-0:
     build:
       context: .
+    stop_grace_period: "60s"
     restart: on-failure
     command:
       - server
       - --log-level=2
+      - --advertise-address=arrebato-0
     networks:
       - default
 
   arrebato-1:
     build:
       context: .
+    stop_grace_period: "60s"
     restart: on-failure
     command:
       - server
       - --peers=arrebato-0
       - --log-level=2
+      - --advertise-address=arrebato-1
     depends_on:
       - arrebato-0
     networks:
@@ -26,13 +30,15 @@ services:
   arrebato-2:
     build:
       context: .
+    stop_grace_period: "60s"
     restart: on-failure
     command:
       - server
       - --peers=arrebato-0
       - --log-level=2
+      - --advertise-address=arrebato-2
     depends_on:
-      - arrebato-0
+      - arrebato-1
     networks:
       - default
 
