@@ -37,7 +37,7 @@ spec:
                 labelSelector:
                   matchLabels:
                     app: arrebato
-      terminationGracePeriodSeconds: 60
+      terminationGracePeriodSeconds: 120
       containers:
         - name: server
           image: ghcr.io/davidsbond/arrebato:latest
@@ -71,7 +71,7 @@ spec:
             - server
             - --peers=arrebato-0.arrebato.$(NAMESPACE).svc.cluster.local
             - --advertise-address=$(POD_NAME).arrebato.$(NAMESPACE).svc.cluster.local
-            - --log-level=5
+            - --log-level=2
           volumeMounts:
             - mountPath: /var/lib/arrebato
               name: data

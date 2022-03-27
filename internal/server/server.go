@@ -243,9 +243,19 @@ func (svr *Server) Start(ctx context.Context) error {
 
 	grp.Go(func() error {
 		<-ctx.Done()
+		svr.logger.Info("server shutting down")
+
+		// Shutting down gracefully requires several operations
 		return multierror.Append(
-			svr.serf.Leave(),
+			// Remove ourselves from the raft configuration
+			svr.raft.RemoveServer(raft.ServerID(svr.config.AdvertiseAddress), 0, time.Minute).Error(),
+			// Shutdown all the raft goroutines
 			svr.raft.Shutdown().Error(),
+			// Leave the serf cluster
+			svr.serf.Leave(),
+			// Shutdown all the serf goroutines
+			svr.serf.Shutdown(),
+			// Close and sync the state store
 			svr.store.Close(),
 		).ErrorOrNil()
 	})

@@ -75,7 +75,7 @@ func setupRaft(config Config, fsm raft.FSM, logger hclog.Logger) (*raft.Raft, er
 
 	raftConfig := raft.DefaultConfig()
 	raftConfig.Logger = logger
-	raftConfig.LocalID = raft.ServerID(raftAddress)
+	raftConfig.LocalID = raft.ServerID(config.AdvertiseAddress)
 
 	dataPath := filepath.Join(config.DataPath, "raft.db")
 	db, err := raftboltdb.NewBoltStore(dataPath)
@@ -97,7 +97,7 @@ func setupRaft(config Config, fsm raft.FSM, logger hclog.Logger) (*raft.Raft, er
 		Servers: []raft.Server{
 			{
 				Suffrage: raft.Voter,
-				ID:       raft.ServerID(raftAddress),
+				ID:       raftConfig.LocalID,
 				Address:  raft.ServerAddress(raftAddress),
 			},
 		},
@@ -117,9 +117,11 @@ func setupRaft(config Config, fsm raft.FSM, logger hclog.Logger) (*raft.Raft, er
 	}
 
 	if ok, _ := raft.HasExistingState(db, db, snapshots); ok {
+		logger.Debug("found existing raft state")
 		return r, nil
 	}
 
+	logger.Debug("bootstrapping cluster")
 	err = r.BootstrapCluster(bootstrap).Error()
 	switch {
 	case errors.Is(err, raft.ErrCantBootstrap):
