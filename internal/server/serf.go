@@ -29,14 +29,13 @@ func setupSerf(config Config, logger hclog.Logger) (<-chan serf.Event, *serf.Ser
 	})
 
 	serfEvents := make(chan serf.Event, 1)
-	serfAddress := fmt.Sprint(config.AdvertiseAddress, ":", config.Serf.Port)
 	serfConfig := serf.DefaultConfig()
 	serfConfig.Logger = logger.StandardLogger(&hclog.StandardLoggerOptions{
 		InferLevelsWithTimestamp: true,
 	})
 
 	serfConfig.EventCh = serfEvents
-	serfConfig.NodeName = serfAddress
+	serfConfig.NodeName = config.AdvertiseAddress
 
 	s, err := serf.Create(serfConfig)
 	if err != nil {
@@ -104,9 +103,8 @@ func (svr *Server) handleSerfEventMemberJoin(ctx context.Context, event serf.Mem
 			return ctx.Err()
 		}
 
-		peer := fmt.Sprint(member.Addr.String(), ":", svr.config.Raft.Port)
-
-		if err := svr.raft.AddVoter(raft.ServerID(peer), raft.ServerAddress(peer), 0, svr.config.Raft.Timeout).Error(); err != nil {
+		peer := fmt.Sprint(member.Name, ":", svr.config.Raft.Port)
+		if err := svr.raft.AddVoter(raft.ServerID(member.Name), raft.ServerAddress(peer), 0, svr.config.Raft.Timeout).Error(); err != nil {
 			return fmt.Errorf("failed to add voter %s: %w", peer, err)
 		}
 	}
@@ -120,9 +118,8 @@ func (svr *Server) handleSerfEventMemberLeave(ctx context.Context, event serf.Me
 			return ctx.Err()
 		}
 
-		peer := fmt.Sprint(member.Addr.String(), ":", svr.config.Raft.Port)
-		if err := svr.raft.RemoveServer(raft.ServerID(peer), 0, svr.config.Raft.Timeout).Error(); err != nil {
-			return fmt.Errorf("failed to add voter %s: %w", peer, err)
+		if err := svr.raft.RemoveServer(raft.ServerID(member.Name), 0, svr.config.Raft.Timeout).Error(); err != nil {
+			return fmt.Errorf("failed to remove voter %s: %w", member.Name, err)
 		}
 	}
 

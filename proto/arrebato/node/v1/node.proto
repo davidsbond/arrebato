@@ -9,4 +9,6 @@ option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/node
 message Node {
   // Whether or not the node is the leader of the cluster.
   bool leader = 1;
+  // Peers known to the node.
+  repeated string peers = 2;
 }
