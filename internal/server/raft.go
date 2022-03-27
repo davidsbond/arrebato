@@ -188,7 +188,7 @@ func (svr *Server) Apply(log *raft.Log) interface{} {
 
 	// When the server restarts, the log will be replayed, we don't want to duplicate all the messages/topics in
 	// the state so if the log index is less than the last known index sent to the FSM then we do nothing.
-	if log.Index < svr.raft.LastIndex() {
+	if log.Index < svr.raft.AppliedIndex() {
 		return nil
 	}
 
