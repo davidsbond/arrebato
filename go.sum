@@ -507,8 +507,8 @@ github.com/breml/bidichk v0.2.2/go.mod h1:zbfeitpevDUGI7V91Uzzuwrn4Vls8MoBMrwtt7
 github.com/breml/errchkjson v0.2.3 h1:97eGTmR/w0paL2SwfRPI1jaAZHaH/fXnxWTw2eEIqE0=
 github.com/breml/errchkjson v0.2.3/go.mod h1:jZEATw/jF69cL1iy7//Yih8yp/mXp2CBoBr9GJwCAsY=
 github.com/bshuster-repo/logrus-logstash-hook v0.4.1/go.mod h1:zsTqEiSzDgAa/8GZR7E1qaXrhYNDKBYy5/dWPTIflbk=
-github.com/bufbuild/buf v1.2.1 h1:rEjRF9noYZHbU4OjVbzUHptm88kZSsnth9D1mHRk5ic=
-github.com/bufbuild/buf v1.2.1/go.mod h1:2+YDhYsLYzHnEZvigKafao+dY58ZHp830hC9T5NVZY0=
+github.com/bufbuild/buf v1.3.0 h1:rjLGRdAF0rK2UcfoHMUVcI95aejdulh3vs6F51q/ZGE=
+github.com/bufbuild/buf v1.3.0/go.mod h1:2+YDhYsLYzHnEZvigKafao+dY58ZHp830hC9T5NVZY0=
 github.com/buger/jsonparser v0.0.0-20180808090653-f4dd9f5a6b44/go.mod h1:bbYlZJ7hK1yFx9hf58LP0zeX7UjIGs20ufpu3evjr+s=
 github.com/bugsnag/bugsnag-go v0.0.0-20141110184014-b1d153021fcd/go.mod h1:2oa8nejYd4cQ/b0hMIopN0lCRxU0bueqREvZLWFrtK8=
 github.com/bugsnag/osext v0.0.0-20130617224835-0dd3f918b21b/go.mod h1:obH5gd0BsqsP2LwDJ9aOkm/6J86V6lyAXCoQWGw3K50=
