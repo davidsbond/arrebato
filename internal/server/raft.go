@@ -3,6 +3,7 @@ package server
 import (
 	"compress/gzip"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb/v2"
+	"go.etcd.io/bbolt"
 
 	"github.com/davidsbond/arrebato/internal/command"
 	aclcmd "github.com/davidsbond/arrebato/internal/proto/arrebato/acl/command/v1"
@@ -111,7 +113,7 @@ func setupRaft(config Config, fsm raft.FSM, logger hclog.Logger) (*raft.Raft, er
 		peerAddress := fmt.Sprint(peer, ":", config.Raft.Port)
 		bootstrap.Servers = append(bootstrap.Servers, raft.Server{
 			Suffrage: raft.Voter,
-			ID:       raft.ServerID(peerAddress),
+			ID:       raft.ServerID(peer),
 			Address:  raft.ServerAddress(peerAddress),
 		})
 	}
@@ -186,9 +188,16 @@ func (svr *Server) Apply(log *raft.Log) interface{} {
 	ctx, cancel := context.WithTimeout(context.Background(), svr.config.Raft.Timeout)
 	defer cancel()
 
+	lastAppliedIndex, err := svr.lastAppliedIndex()
+	if err != nil {
+		return fmt.Errorf("failed to get last applied index: %w", err)
+	}
+
 	// When the server restarts, the log will be replayed, we don't want to duplicate all the messages/topics in
-	// the state so if the log index is less than the last known index sent to the FSM then we do nothing.
-	if log.Index < svr.raft.AppliedIndex() {
+	// the state so if the log index is less than the last known index sent to the FSM then we do nothing. We can't
+	// fully rely on the raft mechanism to know exactly the last log index that the FSM successfully handled, so we
+	// also track that manually.
+	if log.Index < lastAppliedIndex && lastAppliedIndex != 0 {
 		return nil
 	}
 
@@ -199,20 +208,65 @@ func (svr *Server) Apply(log *raft.Log) interface{} {
 
 	switch payload := cmd.Payload().(type) {
 	case *topiccmd.CreateTopic:
-		return svr.topicHandler.Create(ctx, payload)
+		err = svr.topicHandler.Create(ctx, payload)
 	case *topiccmd.DeleteTopic:
-		return svr.topicHandler.Delete(ctx, payload)
+		err = svr.topicHandler.Delete(ctx, payload)
 	case *messagecmd.CreateMessage:
-		return svr.messageHandler.Create(ctx, payload)
+		err = svr.messageHandler.Create(ctx, payload)
 	case *consumercmd.SetTopicIndex:
-		return svr.consumerHandler.SetTopicIndex(ctx, payload)
+		err = svr.consumerHandler.SetTopicIndex(ctx, payload)
 	case *aclcmd.SetACL:
-		return svr.aclHandler.Set(ctx, payload)
+		err = svr.aclHandler.Set(ctx, payload)
 	case *signingcmd.CreatePublicKey:
-		return svr.signingHandler.Create(ctx, payload)
+		err = svr.signingHandler.Create(ctx, payload)
 	default:
-		return nil
+		break
 	}
+
+	if err != nil {
+		return err
+	}
+
+	return svr.setLastAppliedIndex(log.Index)
+}
+
+const (
+	raftKey             = "raft"
+	lastAppliedIndexKey = "last_applied_index"
+)
+
+func (svr *Server) setLastAppliedIndex(index uint64) error {
+	return svr.store.Update(func(tx *bbolt.Tx) error {
+		bucket, err := tx.CreateBucketIfNotExists([]byte(raftKey))
+		if err != nil {
+			return fmt.Errorf("failed to open raft bucket: %w", err)
+		}
+
+		value := make([]byte, 8)
+		binary.BigEndian.PutUint64(value, index)
+
+		return bucket.Put([]byte(lastAppliedIndexKey), value)
+	})
+}
+
+func (svr *Server) lastAppliedIndex() (uint64, error) {
+	var index uint64
+	err := svr.store.View(func(tx *bbolt.Tx) error {
+		bucket := tx.Bucket([]byte(raftKey))
+		if bucket == nil {
+			return nil
+		}
+
+		value := bucket.Get([]byte(lastAppliedIndexKey))
+		if value == nil {
+			return nil
+		}
+
+		index = binary.BigEndian.Uint64(value)
+		return nil
+	})
+
+	return index, err
 }
 
 // IsLeader returns true if this server instance is the cluster leader.
