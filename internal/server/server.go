@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/raft"
+	raftboltdb "github.com/hashicorp/raft-boltdb/v2"
 	"github.com/hashicorp/serf/serf"
 	"go.etcd.io/bbolt"
 	"golang.org/x/sync/errgroup"
@@ -35,6 +36,7 @@ type (
 		config     Config
 		logger     hclog.Logger
 		raft       *raft.Raft
+		raftStore  *raftboltdb.BoltStore
 		serf       *serf.Serf
 		serfEvents <-chan serf.Event
 		store      *bbolt.DB
@@ -131,7 +133,7 @@ func New(config Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to setup serf: %w", err)
 	}
 
-	server.raft, err = setupRaft(config, server, server.logger)
+	server.raft, server.raftStore, err = setupRaft(config, server, server.logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup raft: %w", err)
 	}

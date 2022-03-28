@@ -57,6 +57,10 @@ func (svr *Server) serveMetrics(ctx context.Context, config Config) error {
 		return s.ListenAndServe()
 	})
 	grp.Go(func() error {
+		svr.raftStore.RunMetrics(ctx, time.Minute)
+		return nil
+	})
+	grp.Go(func() error {
 		<-ctx.Done()
 		return s.Close()
 	})

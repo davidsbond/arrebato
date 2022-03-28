@@ -43,15 +43,19 @@ type (
 	}
 )
 
-func setupRaft(config Config, fsm raft.FSM, logger hclog.Logger) (*raft.Raft, error) {
+const (
+	raftLogCacheSize = 512
+)
+
+func setupRaft(config Config, fsm raft.FSM, logger hclog.Logger) (*raft.Raft, *raftboltdb.BoltStore, error) {
 	if err := os.MkdirAll(config.DataPath, 0o750); err != nil {
-		return nil, fmt.Errorf("failed to create raft data dir: %w", err)
+		return nil, nil, fmt.Errorf("failed to create raft data dir: %w", err)
 	}
 
 	raftAddress := fmt.Sprint(config.BindAddress, ":", config.Raft.Port)
 	addrs, err := net.LookupIP(config.AdvertiseAddress)
 	if err != nil {
-		return nil, fmt.Errorf("failed to look up ip for advertise address: %w", err)
+		return nil, nil, fmt.Errorf("failed to look up ip for advertise address: %w", err)
 	}
 
 	var advertiseAddress net.TCPAddr
@@ -72,7 +76,7 @@ func setupRaft(config Config, fsm raft.FSM, logger hclog.Logger) (*raft.Raft, er
 		config.Raft.Timeout,
 		logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create TCP transport: %w", err)
+		return nil, nil, fmt.Errorf("failed to create TCP transport: %w", err)
 	}
 
 	raftConfig := raft.DefaultConfig()
@@ -82,17 +86,23 @@ func setupRaft(config Config, fsm raft.FSM, logger hclog.Logger) (*raft.Raft, er
 	dataPath := filepath.Join(config.DataPath, "raft.db")
 	db, err := raftboltdb.NewBoltStore(dataPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create database: %w", err)
+		return nil, nil, fmt.Errorf("failed to create database: %w", err)
 	}
 
 	snapshots, err := raft.NewFileSnapshotStoreWithLogger(config.DataPath, config.Raft.MaxSnapshots, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create snapshot store: %w", err)
+		return nil, nil, fmt.Errorf("failed to create snapshot store: %w", err)
 	}
 
-	r, err := raft.NewRaft(raftConfig, fsm, db, db, snapshots, transport)
+	// We wrap the log store with a cache to increase performance accessing recent logs.
+	logs, err := raft.NewLogCache(raftLogCacheSize, db)
 	if err != nil {
-		return nil, err
+		return nil, nil, fmt.Errorf("failed to create log cache: %w", err)
+	}
+
+	r, err := raft.NewRaft(raftConfig, fsm, logs, db, snapshots, transport)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	bootstrap := raft.Configuration{
@@ -120,7 +130,7 @@ func setupRaft(config Config, fsm raft.FSM, logger hclog.Logger) (*raft.Raft, er
 
 	if ok, _ := raft.HasExistingState(db, db, snapshots); ok {
 		logger.Debug("found existing raft state")
-		return r, nil
+		return r, db, nil
 	}
 
 	logger.Debug("bootstrapping cluster")
@@ -130,10 +140,10 @@ func setupRaft(config Config, fsm raft.FSM, logger hclog.Logger) (*raft.Raft, er
 		// We get this error if a raft state already exists in the data path, this usually means that this node
 		break
 	case err != nil:
-		return nil, fmt.Errorf("failed to bootstrap: %w", err)
+		return nil, nil, fmt.Errorf("failed to bootstrap: %w", err)
 	}
 
-	return r, nil
+	return r, db, nil
 }
 
 // Snapshot returns a raft.FSMSnapshot implementation that backs up the current state of the applied raft log. It
