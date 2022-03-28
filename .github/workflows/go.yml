@@ -137,6 +137,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      - name: Install tools
+        run: make install-tools
+
       - name: Tidy modules
         run: go mod tidy
 
