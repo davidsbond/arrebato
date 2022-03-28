@@ -137,11 +137,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Install tools
-        run: make install-tools
+      - name: Download dependencies
+        run: go mod download all
 
       - name: Tidy modules
         run: go mod tidy
+
+      - name: Install tools
+        run: make install-tools
 
       - name: Check for uncommitted changes
         run: |

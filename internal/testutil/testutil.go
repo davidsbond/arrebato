@@ -23,7 +23,7 @@ func BoltDB(t *testing.T) *bbolt.DB {
 	dir, err := os.MkdirTemp(os.TempDir(), "arrebato")
 	require.NoError(t, err)
 
-	file := filepath.Join(dir, "arrebato.db")
+	file := filepath.Join(dir, "state.db")
 	db, err := bbolt.Open(file, 0o755, bbolt.DefaultOptions)
 	require.NoError(t, err)
 

@@ -114,6 +114,10 @@ func New(config Config) (*Server, error) {
 		}),
 	}
 
+	if err = os.MkdirAll(config.DataPath, 0o700); err != nil {
+		return nil, fmt.Errorf("failed to create data path: %w", err)
+	}
+
 	if config.AdvertiseAddress == "" {
 		config.AdvertiseAddress, err = getDefaultAdvertiseAddress()
 		if err != nil {
@@ -189,8 +193,8 @@ func New(config Config) (*Server, error) {
 func setupStore(config Config, logger hclog.Logger) (*bbolt.DB, error) {
 	options := bbolt.DefaultOptions
 
-	snapshot := filepath.Join(config.DataPath, "arrebato_snapshot.db")
-	store := filepath.Join(config.DataPath, "arrebato.db")
+	snapshot := filepath.Join(config.DataPath, "state_snapshot.db")
+	store := filepath.Join(config.DataPath, "state.db")
 
 	_, err := os.Stat(snapshot)
 	switch {
@@ -202,7 +206,7 @@ func setupStore(config Config, logger hclog.Logger) (*bbolt.DB, error) {
 		return nil, err
 	}
 
-	logger.Debug("found an arrebato_snapshot.db file, replacing existing store")
+	logger.Debug("found an state_snapshot.db file, replacing existing store")
 
 	// We've found a snapshot file, remove any existing store, rename the snapshot to match
 	// the expected store name and open that.
@@ -249,12 +253,12 @@ func (svr *Server) Start(ctx context.Context) error {
 
 		// Shutting down gracefully requires several operations
 		return multierror.Append(
+			// Leave the serf cluster
+			svr.serf.Leave(),
 			// Remove ourselves from the raft configuration
 			svr.raft.RemoveServer(raft.ServerID(svr.config.AdvertiseAddress), 0, time.Minute).Error(),
 			// Shutdown all the raft goroutines
 			svr.raft.Shutdown().Error(),
-			// Leave the serf cluster
-			svr.serf.Leave(),
 			// Shutdown all the serf goroutines
 			svr.serf.Shutdown(),
 			// Close and sync the state store

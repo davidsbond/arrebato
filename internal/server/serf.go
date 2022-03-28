@@ -2,7 +2,9 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"path/filepath"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/memberlist"
@@ -36,6 +38,8 @@ func setupSerf(config Config, logger hclog.Logger) (<-chan serf.Event, *serf.Ser
 
 	serfConfig.EventCh = serfEvents
 	serfConfig.NodeName = config.AdvertiseAddress
+	serfConfig.SnapshotPath = filepath.Join(config.DataPath, "serf.db")
+	serfConfig.RejoinAfterLeave = true
 
 	s, err := serf.Create(serfConfig)
 	if err != nil {
@@ -66,10 +70,6 @@ func (svr *Server) handleSerfEvents(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case event := <-svr.serfEvents:
-			if err := svr.raft.VerifyLeader().Error(); err != nil {
-				continue
-			}
-
 			if err := svr.handleSerfEvent(ctx, event); err != nil {
 				return fmt.Errorf("failed to handle serf event: %w", err)
 			}
@@ -98,14 +98,42 @@ func (svr *Server) handleSerfMemberEvent(ctx context.Context, event serf.MemberE
 }
 
 func (svr *Server) handleSerfEventMemberJoin(ctx context.Context, event serf.MemberEvent) error {
+	if err := svr.raft.VerifyLeader().Error(); err != nil {
+		return nil
+	}
+
 	for _, member := range event.Members {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
 
+		future := svr.raft.GetConfiguration()
+		if future.Error() != nil {
+			return fmt.Errorf("failed to get raft configuration: %w", future.Error())
+		}
+
+		serverID := raft.ServerID(member.Name)
+		for _, server := range future.Configuration().Servers {
+			if serverID != server.ID {
+				continue
+			}
+
+			err := svr.raft.RemoveServer(serverID, 0, svr.config.Raft.Timeout).Error()
+			switch {
+			case errors.Is(err, raft.ErrLeadershipLost):
+				return nil
+			case err != nil:
+				return fmt.Errorf("failed to remove existing server: %w", err)
+			}
+		}
+
 		peer := fmt.Sprint(member.Name, ":", svr.config.Raft.Port)
-		if err := svr.raft.AddVoter(raft.ServerID(member.Name), raft.ServerAddress(peer), 0, svr.config.Raft.Timeout).Error(); err != nil {
-			return fmt.Errorf("failed to add voter %s: %w", peer, err)
+		err := svr.raft.AddVoter(serverID, raft.ServerAddress(peer), 0, svr.config.Raft.Timeout).Error()
+		switch {
+		case errors.Is(err, raft.ErrLeadershipLost):
+			return nil
+		case err != nil:
+			return fmt.Errorf("failed to add server: %w", err)
 		}
 	}
 
@@ -113,14 +141,22 @@ func (svr *Server) handleSerfEventMemberJoin(ctx context.Context, event serf.Mem
 }
 
 func (svr *Server) handleSerfEventMemberLeave(ctx context.Context, event serf.MemberEvent) error {
+	if err := svr.raft.VerifyLeader().Error(); err != nil {
+		return nil
+	}
+
 	for _, member := range event.Members {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
 
 		svr.logger.Info("removing server", "name", member.Name)
-		if err := svr.raft.RemoveServer(raft.ServerID(member.Name), 0, svr.config.Raft.Timeout).Error(); err != nil {
-			return fmt.Errorf("failed to remove voter %s: %w", member.Name, err)
+		err := svr.raft.RemoveServer(raft.ServerID(member.Name), 0, svr.config.Raft.Timeout).Error()
+		switch {
+		case errors.Is(err, raft.ErrLeadershipLost):
+			return nil
+		case err != nil:
+			return fmt.Errorf("failed to remove existing server: %w", err)
 		}
 	}
 
