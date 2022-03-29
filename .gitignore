@@ -5,3 +5,4 @@ dist/
 *.sbom
 *.pem
 *.srl
+*.upx
