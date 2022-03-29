@@ -34,7 +34,7 @@ format:
 	gofumpt -l -w .
 
 snapshot:
-	goreleaser release --snapshot --rm-dist
+	goreleaser release --snapshot --rm-dist --skip-sign
 
 release:
 	goreleaser release --rm-dist

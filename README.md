@@ -7,7 +7,7 @@
 Arrebato is a gRPC based pub/sub messaging system with an emphasis on strong
 message typing & message verification using public-key cryptography. It
 provides at-least-once message semantics and can be deployed in a
-high-availability configuration. 
+high-availability configuration.
 
 See the [documentation](./docs) for more information on installation, design
 & contributing.
