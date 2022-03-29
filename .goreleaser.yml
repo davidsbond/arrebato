@@ -108,5 +108,5 @@ release:
     - glob: ./install.yaml
 
 changelog:
-  use: github-native
+  use: github
 
