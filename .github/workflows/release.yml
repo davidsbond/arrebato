@@ -1,4 +1,10 @@
 name: release
+
+permissions:
+  contents: write
+  id-token: write
+  packages: write
+
 on:
   push:
     tags:
