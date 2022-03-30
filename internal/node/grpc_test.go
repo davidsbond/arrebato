@@ -23,19 +23,23 @@ func TestGRPC_Describe(t *testing.T) {
 		Expected *nodesvc.DescribeResponse
 	}{
 		{
-			Name:  "It should state if a node is the leader",
+			Name:  "It should return node details and known peers",
 			State: raft.Leader,
 			Config: raft.Configuration{
 				Servers: []raft.Server{
 					{
 						ID: raft.ServerID("test-server"),
 					},
+					{
+						ID: raft.ServerID("test-server-2"),
+					},
 				},
 			},
 			Expected: &nodesvc.DescribeResponse{
 				Node: &nodepb.Node{
+					Name:   "test-server",
 					Leader: true,
-					Peers:  []string{"test-server"},
+					Peers:  []string{"test-server-2"},
 				},
 			},
 		},
@@ -44,7 +48,9 @@ func TestGRPC_Describe(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
 			ctx := testutil.Context(t)
-			actual, err := node.NewGRPC(&MockRaft{state: tc.State, config: tc.Config}).Describe(ctx, &nodesvc.DescribeRequest{})
+			r := &MockRaft{state: tc.State, config: tc.Config}
+			localID := raft.ServerID("test-server")
+			actual, err := node.NewGRPC(r, localID).Describe(ctx, &nodesvc.DescribeRequest{})
 			assert.NoError(t, err)
 			assert.True(t, proto.Equal(tc.Expected, actual))
 		})

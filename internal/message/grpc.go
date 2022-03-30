@@ -202,7 +202,7 @@ func (svr *GRPC) Consume(request *messagesvc.ConsumeRequest, server messagesvc.M
 			// of all available messages we wait via the ticker and check again for new messages from the last known
 			// index. This allows the client to stay connected and keep getting more messages, without over-polling
 			// the data store.
-			err := svr.reader.Read(ctx, request.GetTopic(), topicIndex.GetIndex(), func(ctx context.Context, m *message.Message) error {
+			err = svr.reader.Read(ctx, request.GetTopic(), topicIndex.GetIndex(), func(ctx context.Context, m *message.Message) error {
 				resp := &messagesvc.ConsumeResponse{Message: m}
 
 				if err = server.Send(resp); err != nil {
