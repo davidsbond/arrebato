@@ -17,4 +17,6 @@ message Topic {
   google.protobuf.Duration consumer_retention_period = 3;
   // Determines whether or not unverified messages are rejected for this topic.
   bool require_verified_messages = 4;
+  // The number of partitions the topic should have.
+  uint32 partitions = 5;
 }

@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/davidsbond/arrebato/internal/clientinfo"
@@ -32,12 +33,13 @@ type (
 	// The GRPC type is a messagesvc.MessageServiceServer implementation that handles inbound gRPC requests to manage
 	// and query Messages.
 	GRPC struct {
-		executor   Executor
-		reader     Reader
-		consumers  TopicIndexGetter
-		publicKeys PublicKeyGetter
-		topics     TopicGetter
-		acl        ACL
+		executor    Executor
+		reader      Reader
+		consumers   TopicIndexGetter
+		publicKeys  PublicKeyGetter
+		topics      TopicGetter
+		acl         ACL
+		partitioner Partitioner
 	}
 
 	// The Executor interface describes types that execute commands related to Message data.
@@ -81,20 +83,36 @@ type (
 		// Get should return the named topic. It should return topic.ErrNoTopic if the topic does not exist.
 		Get(ctx context.Context, name string) (*topicpb.Topic, error)
 	}
+
+	// The Partitioner interface describes types that can allocate messages to a partition within a range.
+	Partitioner interface {
+		// Partition should return a uint32 value within the range of 0 to max-1 based on the provided message.
+		Partition(m proto.Message, max uint32) (uint32, error)
+	}
 )
 
 // NewGRPC returns a new instance of the GRPC type that will modify Message data via commands sent to the Executor and
 // read messages via the Reader implementation. The index of consumers will be obtained via the TopicIndexGetter implementation,
 // permissions will be checked using the ACL implementation, topic details will be obtained via the TopicGetter implementation
-// and client's public signing keys are obtained via the PublicKeyGetter implementation.
-func NewGRPC(executor Executor, reader Reader, consumers TopicIndexGetter, acl ACL, publicKeys PublicKeyGetter, topics TopicGetter) *GRPC {
+// and client's public signing keys are obtained via the PublicKeyGetter implementation. Message partitions will be calculated
+// using the Partitioner implementation.
+func NewGRPC(
+	executor Executor,
+	reader Reader,
+	consumers TopicIndexGetter,
+	acl ACL,
+	publicKeys PublicKeyGetter,
+	topics TopicGetter,
+	partitioner Partitioner,
+) *GRPC {
 	return &GRPC{
-		executor:   executor,
-		reader:     reader,
-		consumers:  consumers,
-		acl:        acl,
-		publicKeys: publicKeys,
-		topics:     topics,
+		executor:    executor,
+		reader:      reader,
+		consumers:   consumers,
+		acl:         acl,
+		publicKeys:  publicKeys,
+		topics:      topics,
+		partitioner: partitioner,
 	}
 }
 
@@ -137,11 +155,25 @@ func (svr *GRPC) Produce(ctx context.Context, request *messagesvc.ProduceRequest
 		return nil, status.Errorf(codes.PermissionDenied, "topic %s only allows verified messages", request.GetMessage().GetTopic())
 	}
 
+	// If a message key is not present, we calculate the partition using the message value instead.
+	toPartition := request.GetMessage().GetKey()
+	if toPartition == nil {
+		toPartition = request.GetMessage().GetValue()
+	}
+
+	// We calculate the partition here so that only the leader needs to do the work, follower nodes do not need to
+	// calculate this again.
+	partition, err := svr.partitioner.Partition(toPartition, tp.GetPartitions())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to calculate partition: %v", err)
+	}
+
 	cmd := command.New(&messagecmd.CreateMessage{
 		Message: &message.Message{
 			Topic:     request.GetMessage().GetTopic(),
 			Key:       request.GetMessage().GetKey(),
 			Value:     request.GetMessage().GetValue(),
+			Partition: partition,
 			Timestamp: timestamppb.Now(),
 			Sender: &message.Sender{
 				Id:           info.ID,

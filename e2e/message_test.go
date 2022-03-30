@@ -28,8 +28,10 @@ func (s *MessageSuite) TestProduceConsumeMessages() {
 
 	// Create a topic for use in the test suite
 	require.NoError(s.T(), s.client.CreateTopic(ctx, arrebato.Topic{
-		Name:                   "test-suite-topic",
-		MessageRetentionPeriod: time.Hour,
+		Name:                    "test-suite-topic",
+		MessageRetentionPeriod:  time.Hour,
+		ConsumerRetentionPeriod: time.Hour,
+		Partitions:              100,
 	}))
 
 	expected := structpb.NewStringValue("hello-world")

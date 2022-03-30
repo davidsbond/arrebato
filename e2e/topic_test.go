@@ -24,8 +24,10 @@ func (s *TopicSuite) TestManageTopics() {
 
 	s.Run("It should create a new topic", func() {
 		topic := arrebato.Topic{
-			Name:                   "test-topic",
-			MessageRetentionPeriod: time.Hour,
+			Name:                    "test-topic",
+			MessageRetentionPeriod:  time.Hour,
+			ConsumerRetentionPeriod: time.Hour,
+			Partitions:              100,
 		}
 
 		require.NoError(s.T(), s.client.CreateTopic(ctx, topic))
@@ -37,6 +39,8 @@ func (s *TopicSuite) TestManageTopics() {
 		assert.NoError(s.T(), err)
 		assert.EqualValues(s.T(), "test-topic", topic.Name)
 		assert.EqualValues(s.T(), time.Hour, topic.MessageRetentionPeriod)
+		assert.EqualValues(s.T(), time.Hour, topic.ConsumerRetentionPeriod)
+		assert.EqualValues(s.T(), uint32(100), topic.Partitions)
 	})
 
 	s.Run("It should return an error requesting information on a topic that does not exist", func() {

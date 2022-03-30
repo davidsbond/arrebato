@@ -35,6 +35,7 @@ func createTopic() *cobra.Command {
 		messageRetentionPeriod  time.Duration
 		consumerRetentionPeriod time.Duration
 		requireVerifiedMessages bool
+		partitions              uint32
 	)
 
 	cmd := &cobra.Command{
@@ -49,6 +50,7 @@ func createTopic() *cobra.Command {
 				MessageRetentionPeriod:  messageRetentionPeriod,
 				ConsumerRetentionPeriod: consumerRetentionPeriod,
 				RequireVerifiedMessages: requireVerifiedMessages,
+				Partitions:              partitions,
 			})
 		}),
 	}
@@ -57,6 +59,7 @@ func createTopic() *cobra.Command {
 	flags.DurationVar(&messageRetentionPeriod, "message-retention", 0, "The amount of time to store a message on a topic, zero meaning infinite retention")
 	flags.DurationVar(&consumerRetentionPeriod, "consumer-retention", 0, "The amount of time to store a consumer's index on a topic, zero meaning infinite retention")
 	flags.BoolVar(&requireVerifiedMessages, "require-verified-messages", false, "If true, messages will be rejected if their signature is not verified")
+	flags.Uint32Var(&partitions, "partitions", 1, "The number of partitions this topic will use")
 
 	return cmd
 }

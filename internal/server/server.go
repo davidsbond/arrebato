@@ -25,6 +25,7 @@ import (
 	"github.com/davidsbond/arrebato/internal/consumer"
 	"github.com/davidsbond/arrebato/internal/message"
 	"github.com/davidsbond/arrebato/internal/node"
+	"github.com/davidsbond/arrebato/internal/partition"
 	"github.com/davidsbond/arrebato/internal/prune"
 	"github.com/davidsbond/arrebato/internal/signing"
 	"github.com/davidsbond/arrebato/internal/topic"
@@ -148,6 +149,7 @@ func New(config Config) (*Server, error) {
 	}
 
 	executor := command.NewExecutor(server.raft, config.Raft.Timeout)
+	partitioner := partition.NewCRC32Partitioner()
 
 	// Node stack
 	server.nodeGRPC = node.NewGRPC(server.raft, raft.ServerID(config.AdvertiseAddress))
@@ -182,6 +184,7 @@ func New(config Config) (*Server, error) {
 		server.aclStore,
 		server.signingStore,
 		server.topicStore,
+		partitioner,
 	)
 
 	// Pruning stack
