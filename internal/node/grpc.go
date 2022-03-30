@@ -19,7 +19,8 @@ type (
 	// The GRPC type is a nodesvc.NodeServiceServer implementation that handles inbound gRPC requests to get
 	// information on the node.
 	GRPC struct {
-		raft Raft
+		raft    Raft
+		localID raft.ServerID
 	}
 
 	// The Raft interface describes types that can return information regarding the raft state.
@@ -30,8 +31,8 @@ type (
 )
 
 // NewGRPC returns a new instance of the GRPC type that returns node information based on the Raft state.
-func NewGRPC(raft Raft) *GRPC {
-	return &GRPC{raft: raft}
+func NewGRPC(raft Raft, localID raft.ServerID) *GRPC {
+	return &GRPC{raft: raft, localID: localID}
 }
 
 // Register the GRPC service onto the grpc.ServiceRegistrar.
@@ -48,13 +49,18 @@ func (svr *GRPC) Describe(_ context.Context, _ *nodesvc.DescribeRequest) (*nodes
 	}
 
 	config := future.Configuration()
-	peers := make([]string, len(config.Servers))
-	for i, server := range config.Servers {
-		peers[i] = string(server.ID)
+	peers := make([]string, 0)
+	for _, server := range config.Servers {
+		if server.ID == svr.localID {
+			continue
+		}
+
+		peers = append(peers, string(server.ID))
 	}
 
 	return &nodesvc.DescribeResponse{
 		Node: &node.Node{
+			Name:   string(svr.localID),
 			Leader: svr.raft.State() == raft.Leader,
 			Peers:  peers,
 		},

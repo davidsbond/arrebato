@@ -150,7 +150,7 @@ func New(config Config) (*Server, error) {
 	executor := command.NewExecutor(server.raft, config.Raft.Timeout)
 
 	// Node stack
-	server.nodeGRPC = node.NewGRPC(server.raft)
+	server.nodeGRPC = node.NewGRPC(server.raft, raft.ServerID(config.AdvertiseAddress))
 
 	// ACL stack
 	server.aclStore = acl.NewBoltStore(server.store)

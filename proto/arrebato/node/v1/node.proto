@@ -11,4 +11,6 @@ message Node {
   bool leader = 1;
   // Peers known to the node.
   repeated string peers = 2;
+  // The name of the node
+  string name = 3;
 }
