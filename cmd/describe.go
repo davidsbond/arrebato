@@ -48,6 +48,7 @@ func describeTopic() *cobra.Command {
 			fmt.Println("Message Retention:", topic.MessageRetentionPeriod.String())
 			fmt.Println("Consumer Retention:", topic.ConsumerRetentionPeriod.String())
 			fmt.Println("Require Verified Messages:", topic.RequireVerifiedMessages)
+			fmt.Println("Partitions:", topic.Partitions)
 
 			return nil
 		}),

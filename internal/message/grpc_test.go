@@ -9,10 +9,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/davidsbond/arrebato/internal/command"
 	"github.com/davidsbond/arrebato/internal/message"
+	"github.com/davidsbond/arrebato/internal/partition"
 	messagecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/message/command/v1"
 	messagesvc "github.com/davidsbond/arrebato/internal/proto/arrebato/message/service/v1"
 	messagepb "github.com/davidsbond/arrebato/internal/proto/arrebato/message/v1"
@@ -45,8 +47,9 @@ func TestGRPC_Produce(t *testing.T) {
 			ExpectedCode: codes.OK,
 			Expected: command.New(&messagecmd.CreateMessage{
 				Message: &messagepb.Message{
-					Topic: "test-topic",
-					Value: testutil.Any(t, timestamppb.New(time.Time{})),
+					Topic:     "test-topic",
+					Value:     testutil.Any(t, timestamppb.New(time.Time{})),
+					Partition: 1,
 				},
 			}),
 		},
@@ -103,7 +106,7 @@ func TestGRPC_Produce(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			executor := &MockExecutor{err: tc.Error}
 			publicKeys := &MockPublicKeyGetter{}
-			topics := &MockTopicGetter{topic: &topicpb.Topic{RequireVerifiedMessages: tc.RequireVerified}}
+			topics := &MockTopicGetter{topic: &topicpb.Topic{RequireVerifiedMessages: tc.RequireVerified, Partitions: 10}}
 
 			svc := message.NewGRPC(
 				executor,
@@ -112,6 +115,7 @@ func TestGRPC_Produce(t *testing.T) {
 				&MockACL{allowed: tc.ACLAllow},
 				publicKeys,
 				topics,
+				partition.NewCRC32Partitioner(),
 			)
 
 			resp, err := svc.Produce(ctx, tc.Request)
@@ -127,7 +131,9 @@ func TestGRPC_Produce(t *testing.T) {
 			actual := executor.command.Payload().(*messagecmd.CreateMessage)
 
 			assert.EqualValues(t, expected.GetMessage().GetTopic(), actual.GetMessage().GetTopic())
-			assert.EqualValues(t, expected.GetMessage().GetValue(), actual.GetMessage().GetValue())
+			assert.EqualValues(t, expected.GetMessage().GetPartition(), actual.GetMessage().GetPartition())
+			assert.True(t, proto.Equal(expected.GetMessage().GetValue(), actual.GetMessage().GetValue()))
+			assert.True(t, proto.Equal(expected.GetMessage().GetKey(), actual.GetMessage().GetKey()))
 			assert.NotNil(t, actual.GetMessage().GetTimestamp())
 		})
 	}
@@ -191,7 +197,7 @@ func TestGRPC_Consume(t *testing.T) {
 			reader := &MockReader{messages: tc.SeedTopic, err: tc.Error}
 			consumers := &MockTopicIndexGetter{}
 
-			err := message.NewGRPC(nil, reader, consumers, &MockACL{allowed: tc.ACLAllow}, nil, nil).Consume(tc.Request, stream)
+			err := message.NewGRPC(nil, reader, consumers, &MockACL{allowed: tc.ACLAllow}, nil, nil, nil).Consume(tc.Request, stream)
 			require.EqualValues(t, tc.ExpectedCode, status.Code(err))
 
 			if tc.Error != nil || tc.ExpectedCode > codes.OK {

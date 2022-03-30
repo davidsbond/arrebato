@@ -12,6 +12,7 @@ option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/mess
 message Message {
   // The topic the message belongs to.
   string topic = 1;
+
   // The location of the message within the topic. This is managed by the cluster and should not be provided when
   // producing messages.
   uint64 index = 2;
@@ -28,6 +29,9 @@ message Message {
 
   // Information about the client that produced the message.
   Sender sender = 6;
+
+  // The partition the message was assigned to.
+  uint32 partition = 7;
 }
 
 // The Sender message describes a client that produced a Message.

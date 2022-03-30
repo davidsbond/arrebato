@@ -41,7 +41,8 @@ func (h *Handler) Create(ctx context.Context, cmd *messagecmd.CreateMessage) err
 
 	h.logger.Debug("message created",
 		"index", index,
-		"topic", cmd.GetMessage().GetTopic())
+		"topic", cmd.GetMessage().GetTopic(),
+		"partition", cmd.GetMessage().GetPartition())
 
 	return nil
 }

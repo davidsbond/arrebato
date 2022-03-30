@@ -27,6 +27,9 @@ type (
 
 		// If true, any attempts to publish an unverified message onto this topic will fail.
 		RequireVerifiedMessages bool `json:"requireVerifiedMessages"`
+
+		// The number of partitions to have on the topic, minimum is 1.
+		Partitions uint32 `json:"partitions"`
 	}
 )
 
@@ -41,6 +44,10 @@ var (
 // CreateTopic creates a new topic described by the provided Topic. Returns ErrTopicExists if the topic already
 // exists.
 func (c *Client) CreateTopic(ctx context.Context, t Topic) error {
+	if t.Partitions == 0 {
+		t.Partitions = 1
+	}
+
 	svc := topicsvc.NewTopicServiceClient(c.cluster.leader())
 	_, err := svc.Create(ctx, &topicsvc.CreateRequest{
 		Topic: &topic.Topic{
@@ -48,6 +55,7 @@ func (c *Client) CreateTopic(ctx context.Context, t Topic) error {
 			MessageRetentionPeriod:  durationpb.New(t.MessageRetentionPeriod),
 			ConsumerRetentionPeriod: durationpb.New(t.ConsumerRetentionPeriod),
 			RequireVerifiedMessages: t.RequireVerifiedMessages,
+			Partitions:              t.Partitions,
 		},
 	})
 	switch {
@@ -80,6 +88,7 @@ func (c *Client) Topic(ctx context.Context, name string) (Topic, error) {
 			MessageRetentionPeriod:  resp.GetTopic().GetMessageRetentionPeriod().AsDuration(),
 			ConsumerRetentionPeriod: resp.GetTopic().GetConsumerRetentionPeriod().AsDuration(),
 			RequireVerifiedMessages: resp.GetTopic().GetRequireVerifiedMessages(),
+			Partitions:              resp.GetTopic().GetPartitions(),
 		}, nil
 	}
 }
@@ -99,6 +108,7 @@ func (c *Client) Topics(ctx context.Context) ([]Topic, error) {
 			MessageRetentionPeriod:  tp.GetMessageRetentionPeriod().AsDuration(),
 			ConsumerRetentionPeriod: tp.GetConsumerRetentionPeriod().AsDuration(),
 			RequireVerifiedMessages: tp.GetRequireVerifiedMessages(),
+			Partitions:              tp.GetPartitions(),
 		}
 	}
 
