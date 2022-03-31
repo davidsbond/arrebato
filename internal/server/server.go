@@ -70,7 +70,9 @@ type (
 		signingGRPC    *signing.GRPC
 
 		// Dependencies for Nodes
-		nodeGRPC *node.GRPC
+		nodeStore   *node.BoltStore
+		nodeHandler *node.Handler
+		nodeGRPC    *node.GRPC
 	}
 
 	// The Config type contains configuration values for the Server.
@@ -133,14 +135,15 @@ func New(config Config) (*Server, error) {
 	}
 
 	server.config = config
-	server.serfEvents, server.serf, err = setupSerf(config, server.logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to setup serf: %w", err)
-	}
 
 	server.raft, server.raftStore, err = setupRaft(config, server, server.logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup raft: %w", err)
+	}
+
+	server.serfEvents, server.serf, err = setupSerf(config, server.logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to setup serf: %w", err)
 	}
 
 	server.store, err = setupStore(config, server.logger)
@@ -152,6 +155,8 @@ func New(config Config) (*Server, error) {
 	partitioner := message.NewCRC32Partitioner()
 
 	// Node stack
+	server.nodeStore = node.NewBoltStore(server.store)
+	server.nodeHandler = node.NewHandler(server.nodeStore, server.logger)
 	server.nodeGRPC = node.NewGRPC(server.raft, raft.ServerID(config.AdvertiseAddress))
 
 	// ACL stack
@@ -281,6 +286,8 @@ func (svr *Server) Start(ctx context.Context) error {
 	err := grp.Wait()
 	switch {
 	case errors.Is(err, http.ErrServerClosed), errors.Is(err, grpc.ErrServerStopped), errors.Is(err, raft.ErrRaftShutdown):
+		// All of these errors are triggered by context cancellation, so we'll swap them for that error
+		// instead.
 		return context.Canceled
 	default:
 		return err

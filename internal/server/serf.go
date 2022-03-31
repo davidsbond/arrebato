@@ -173,10 +173,8 @@ func (svr *Server) handleSerfEventMemberLeave(ctx context.Context, event serf.Me
 			return fmt.Errorf("failed to remove existing server: %w", err)
 		}
 
-		cmd := command.New(&nodecmd.AddNode{
-			Node: &node.Node{
-				Name: member.Name,
-			},
+		cmd := command.New(&nodecmd.RemoveNode{
+			Name: member.Name,
 		})
 
 		if err = svr.executor.Execute(ctx, cmd); err != nil {
