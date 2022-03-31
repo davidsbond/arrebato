@@ -34,7 +34,7 @@ func (s *SnapshotSuite) TestSnapshotting() {
 		assert.True(s.T(), buf.Len() > 0)
 	})
 
-	snapshotPath := filepath.Join(s.config.DataPath, "arrebato_restore.db")
+	snapshotPath := filepath.Join(s.config.DataPath, "state_snapshot.db")
 
 	s.Run("It should restore from the snapshot as a local file", func() {
 		require.NoError(s.T(), s.server.Restore(

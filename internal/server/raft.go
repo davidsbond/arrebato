@@ -157,7 +157,7 @@ func (svr *Server) Snapshot() (raft.FSMSnapshot, error) {
 // is done by initialising the snapshot in a temporary file and triggering the server to restart. The server will detect
 // the restore file, rename it and use it from then on.
 func (svr *Server) Restore(snapshot io.ReadCloser) error {
-	restorePath := filepath.Join(svr.config.DataPath, "arrebato_restore.db")
+	restorePath := filepath.Join(svr.config.DataPath, "state_snapshot.db")
 
 	file, err := os.Create(restorePath)
 	if err != nil {
