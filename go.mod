@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/anchore/syft v0.42.4
 	github.com/armon/go-metrics v0.3.10
-	github.com/bufbuild/buf v1.3.0
+	github.com/bufbuild/buf v1.3.1
 	github.com/golangci/golangci-lint v1.45.2
 	github.com/google/uuid v1.3.0
 	github.com/goreleaser/goreleaser v1.7.0
@@ -285,7 +285,7 @@ require (
 	github.com/jdxcode/netrc v0.0.0-20210204082910-926c7f70242a // indirect
 	github.com/jedisct1/go-minisign v0.0.0-20210703085342-c1f07ee84431 // indirect
 	github.com/jgautheron/goconst v1.5.1 // indirect
-	github.com/jhump/protocompile v0.0.0-20220209020618-b218a88181be // indirect
+	github.com/jhump/protocompile v0.0.0-20220216033700-d705409f108f // indirect
 	github.com/jhump/protoreflect v1.11.1-0.20220213155251-0c2aedc66cf4 // indirect
 	github.com/jingyugao/rowserrcheck v1.1.1 // indirect
 	github.com/jinzhu/copier v0.3.2 // indirect
@@ -465,7 +465,7 @@ require (
 	go.uber.org/zap v1.21.0 // indirect
 	gocloud.dev v0.24.1-0.20211119014450-028788aaaa4c // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
-	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
+	golang.org/x/net v0.0.0-20220325170049-de3da57026de // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
 	golang.org/x/sys v0.0.0-20220319134239-a9b59b0215f8 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
@@ -475,7 +475,7 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/api v0.70.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20220314164441-57ef72a4c106 // indirect
+	google.golang.org/genproto v0.0.0-20220324131243-acbaeb5b85eb // indirect
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
