@@ -10,6 +10,10 @@ import (
 	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/raft"
 	"github.com/hashicorp/serf/serf"
+
+	"github.com/davidsbond/arrebato/internal/command"
+	nodecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/node/command/v1"
+	"github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
 )
 
 type (
@@ -135,6 +139,16 @@ func (svr *Server) handleSerfEventMemberJoin(ctx context.Context, event serf.Mem
 		case err != nil:
 			return fmt.Errorf("failed to add server: %w", err)
 		}
+
+		cmd := command.New(&nodecmd.AddNode{
+			Node: &node.Node{
+				Name: member.Name,
+			},
+		})
+
+		if err = svr.executor.Execute(ctx, cmd); err != nil {
+			return fmt.Errorf("failed to execute command: %w", err)
+		}
 	}
 
 	return nil
@@ -157,6 +171,16 @@ func (svr *Server) handleSerfEventMemberLeave(ctx context.Context, event serf.Me
 			return nil
 		case err != nil:
 			return fmt.Errorf("failed to remove existing server: %w", err)
+		}
+
+		cmd := command.New(&nodecmd.AddNode{
+			Node: &node.Node{
+				Name: member.Name,
+			},
+		})
+
+		if err = svr.executor.Execute(ctx, cmd); err != nil {
+			return fmt.Errorf("failed to execute command: %w", err)
 		}
 	}
 

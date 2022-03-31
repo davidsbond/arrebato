@@ -14,7 +14,6 @@ import (
 
 	"github.com/davidsbond/arrebato/internal/command"
 	"github.com/davidsbond/arrebato/internal/message"
-	"github.com/davidsbond/arrebato/internal/partition"
 	messagecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/message/command/v1"
 	messagesvc "github.com/davidsbond/arrebato/internal/proto/arrebato/message/service/v1"
 	messagepb "github.com/davidsbond/arrebato/internal/proto/arrebato/message/v1"
@@ -115,7 +114,7 @@ func TestGRPC_Produce(t *testing.T) {
 				&MockACL{allowed: tc.ACLAllow},
 				publicKeys,
 				topics,
-				partition.NewCRC32Partitioner(),
+				message.NewCRC32Partitioner(),
 			)
 
 			resp, err := svc.Produce(ctx, tc.Request)

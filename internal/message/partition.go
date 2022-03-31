@@ -1,5 +1,4 @@
-// Package partition provides types that can determine message partitions based on various hashing functions.
-package partition
+package message
 
 import (
 	"fmt"
