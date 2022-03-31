@@ -1,6 +1,12 @@
 package node_test
 
-import "github.com/hashicorp/raft"
+import (
+	"context"
+
+	"github.com/hashicorp/raft"
+
+	"github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
+)
 
 type (
 	MockRaft struct {
@@ -13,7 +19,21 @@ type (
 
 		config raft.Configuration
 	}
+
+	MockStore struct {
+		added *node.Node
+		err   error
+	}
 )
+
+func (mm *MockStore) Add(ctx context.Context, node *node.Node) error {
+	mm.added = node
+	return mm.err
+}
+
+func (mm *MockStore) Remove(ctx context.Context, name string) error {
+	return mm.err
+}
 
 func (mm *MockRaft) GetConfiguration() raft.ConfigurationFuture {
 	return &MockConfigurationFuture{config: mm.config}

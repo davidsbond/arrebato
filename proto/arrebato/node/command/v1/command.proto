@@ -15,5 +15,5 @@ message AddNode {
 
 // The RemoveNode message is a command indicating that an existing node has left the cluster.
 message RemoveNode {
-  arrebato.node.v1.Node node = 1;
+  string name = 1;
 }
