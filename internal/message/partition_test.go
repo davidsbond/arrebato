@@ -1,4 +1,4 @@
-package partition_test
+package message_test
 
 import (
 	"fmt"
@@ -8,11 +8,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/davidsbond/arrebato/internal/partition"
+	"github.com/davidsbond/arrebato/internal/message"
 )
 
 func TestPartitioner_Partition(t *testing.T) {
-	p := partition.NewCRC32Partitioner()
+	p := message.NewCRC32Partitioner()
 
 	t.Run("It should produce the same value for the same message within the range of partitions", func(t *testing.T) {
 		for i := uint32(1); i < 1000; i++ {

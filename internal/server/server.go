@@ -25,7 +25,6 @@ import (
 	"github.com/davidsbond/arrebato/internal/consumer"
 	"github.com/davidsbond/arrebato/internal/message"
 	"github.com/davidsbond/arrebato/internal/node"
-	"github.com/davidsbond/arrebato/internal/partition"
 	"github.com/davidsbond/arrebato/internal/prune"
 	"github.com/davidsbond/arrebato/internal/signing"
 	"github.com/davidsbond/arrebato/internal/topic"
@@ -43,6 +42,7 @@ type (
 		store      *bbolt.DB
 		restore    chan struct{}
 		pruner     *prune.Pruner
+		executor   *command.Executor
 
 		// Dependencies for ACLs
 		aclStore   *acl.BoltStore
@@ -148,8 +148,8 @@ func New(config Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to open storage: %w", err)
 	}
 
-	executor := command.NewExecutor(server.raft, config.Raft.Timeout)
-	partitioner := partition.NewCRC32Partitioner()
+	server.executor = command.NewExecutor(server.raft, config.Raft.Timeout)
+	partitioner := message.NewCRC32Partitioner()
 
 	// Node stack
 	server.nodeGRPC = node.NewGRPC(server.raft, raft.ServerID(config.AdvertiseAddress))
@@ -157,28 +157,28 @@ func New(config Config) (*Server, error) {
 	// ACL stack
 	server.aclStore = acl.NewBoltStore(server.store)
 	server.aclHandler = acl.NewHandler(server.aclStore, server.logger)
-	server.aclGRPC = acl.NewGRPC(executor, server.aclStore)
+	server.aclGRPC = acl.NewGRPC(server.executor, server.aclStore)
 
 	// Topic stack
 	server.topicStore = topic.NewBoltStore(server.store)
 	server.topicHandler = topic.NewHandler(server.topicStore, server.logger)
-	server.topicGRPC = topic.NewGRPC(executor, server.topicStore)
+	server.topicGRPC = topic.NewGRPC(server.executor, server.topicStore)
 
 	// Consumer stack
 	server.consumerStore = consumer.NewBoltStore(server.store)
 	server.consumerHandler = consumer.NewHandler(server.consumerStore, server.logger)
-	server.consumerGRPC = consumer.NewGRPC(executor)
+	server.consumerGRPC = consumer.NewGRPC(server.executor)
 
 	// Signing stack
 	server.signingStore = signing.NewBoltStore(server.store)
 	server.signingHandler = signing.NewHandler(server.signingStore, server.logger)
-	server.signingGRPC = signing.NewGRPC(executor, server.signingStore)
+	server.signingGRPC = signing.NewGRPC(server.executor, server.signingStore)
 
 	// Message stack
 	server.messageStore = message.NewBoltStore(server.store)
 	server.messageHandler = message.NewHandler(server.messageStore, server.logger)
 	server.messageGRPC = message.NewGRPC(
-		executor,
+		server.executor,
 		server.messageStore,
 		server.consumerStore,
 		server.aclStore,
