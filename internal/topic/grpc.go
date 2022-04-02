@@ -13,6 +13,9 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/davidsbond/arrebato/internal/command"
+	"github.com/davidsbond/arrebato/internal/node"
+	nodecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/node/command/v1"
+	nodepb "github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
 	topiccmd "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/command/v1"
 	topicsvc "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/service/v1"
 	"github.com/davidsbond/arrebato/internal/proto/arrebato/topic/v1"
@@ -24,6 +27,7 @@ type (
 	GRPC struct {
 		executor Executor
 		querier  Querier
+		nodes    NodeStore
 	}
 
 	// The Executor interface describes types that execute commands related to Topic data.
@@ -44,12 +48,18 @@ type (
 		// incomplete topic data is found.
 		List(ctx context.Context) ([]*topic.Topic, error)
 	}
+
+	// The NodeStore interface describes types that can query node data.
+	NodeStore interface {
+		// LeastTopics should return the node which has the least number of topics allocated to it.
+		LeastTopics(ctx context.Context) (*nodepb.Node, error)
+	}
 )
 
 // NewGRPC returns a new instance of the GRPC type that will modify Topic data via commands sent to the Executor and
 // query Topic data via the Querier implementation.
-func NewGRPC(executor Executor, querier Querier) *GRPC {
-	return &GRPC{executor: executor, querier: querier}
+func NewGRPC(executor Executor, querier Querier, nodes NodeStore) *GRPC {
+	return &GRPC{executor: executor, querier: querier, nodes: nodes}
 }
 
 // Register the GRPC service onto the grpc.ServiceRegistrar.
@@ -72,6 +82,26 @@ func (svr *GRPC) Create(ctx context.Context, request *topicsvc.CreateRequest) (*
 		return nil, status.Errorf(codes.AlreadyExists, "topic %s already exists", request.GetTopic().GetName())
 	case err != nil:
 		return nil, status.Errorf(codes.Internal, "failed to create topic %s: %v", request.GetTopic().GetName(), err)
+	}
+
+	n, err := svr.nodes.LeastTopics(ctx)
+	switch {
+	case errors.Is(err, node.ErrNoNode):
+		return nil, status.Error(codes.NotFound, "failed to find a node to allocate the topic to")
+	case err != nil:
+		return nil, status.Errorf(codes.Internal, "failed to query nodes: %v", err)
+	}
+
+	cmd = command.New(&nodecmd.AllocateTopic{
+		Name:  n.GetName(),
+		Topic: request.GetTopic().GetName(),
+	})
+	err = svr.executor.Execute(ctx, cmd)
+	switch {
+	case errors.Is(err, command.ErrNotLeader):
+		return nil, status.Error(codes.FailedPrecondition, "this node is not the leader")
+	case err != nil:
+		return nil, status.Errorf(codes.Internal, "failed to allocate topic: %v", err)
 	default:
 		return &topicsvc.CreateResponse{}, nil
 	}

@@ -167,7 +167,7 @@ func New(config Config) (*Server, error) {
 	// Topic stack
 	server.topicStore = topic.NewBoltStore(server.store)
 	server.topicHandler = topic.NewHandler(server.topicStore, server.logger)
-	server.topicGRPC = topic.NewGRPC(server.executor, server.topicStore)
+	server.topicGRPC = topic.NewGRPC(server.executor, server.topicStore, server.nodeStore)
 
 	// Consumer stack
 	server.consumerStore = consumer.NewBoltStore(server.store)
@@ -253,6 +253,10 @@ func (svr *Server) Start(ctx context.Context) error {
 
 	grp.Go(func() error {
 		return svr.pruner.Prune(ctx, svr.config.PruneInterval)
+	})
+
+	grp.Go(func() error {
+		return svr.handleLeadership(ctx)
 	})
 
 	grp.Go(func() error {

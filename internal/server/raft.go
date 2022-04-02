@@ -18,10 +18,12 @@ import (
 	"go.etcd.io/bbolt"
 
 	"github.com/davidsbond/arrebato/internal/command"
+	"github.com/davidsbond/arrebato/internal/node"
 	aclcmd "github.com/davidsbond/arrebato/internal/proto/arrebato/acl/command/v1"
 	consumercmd "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/command/v1"
 	messagecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/message/command/v1"
 	nodecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/node/command/v1"
+	nodepb "github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
 	signingcmd "github.com/davidsbond/arrebato/internal/proto/arrebato/signing/command/v1"
 	topiccmd "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/command/v1"
 )
@@ -234,6 +236,8 @@ func (svr *Server) Apply(log *raft.Log) interface{} {
 		err = svr.nodeHandler.Add(ctx, payload)
 	case *nodecmd.RemoveNode:
 		err = svr.nodeHandler.Remove(ctx, payload)
+	case *nodecmd.AllocateTopic:
+		err = svr.nodeHandler.AllocateTopic(ctx, payload)
 	default:
 		break
 	}
@@ -287,4 +291,39 @@ func (svr *Server) lastAppliedIndex() (uint64, error) {
 // IsLeader returns true if this server instance is the cluster leader.
 func (svr *Server) IsLeader() bool {
 	return svr.raft.State() == raft.Leader
+}
+
+func (svr *Server) handleLeadership(ctx context.Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case isLeader := <-svr.raft.LeaderCh():
+			if !isLeader {
+				continue
+			}
+
+			// When we obtain leadership, we write a command to the log stating that this server has joined
+			// the cluster. The reasoning for this is that the first server in the cluster will likely become the
+			// leader, so we need to ensure that follower nodes have it stored so that topics can be allocated to
+			// it. If we didn't do this, a single node deployment would not be able to allocate any topics to itself
+			// as it wouldn't have its own node stored in the state, as the serf event would not occur that usually
+			// triggers this command being written.
+			cmd := command.New(&nodecmd.AddNode{
+				Node: &nodepb.Node{
+					Name: svr.config.AdvertiseAddress,
+				},
+			})
+
+			err := svr.executor.Execute(ctx, cmd)
+			switch {
+			case errors.Is(err, node.ErrNodeExists):
+				// If we already have the record, we might have obtained leadership from another node or just
+				// restarted, so we just ignore it.
+				break
+			case err != nil:
+				return fmt.Errorf("failed to execute command: %w", err)
+			}
+		}
+	}
 }

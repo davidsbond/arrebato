@@ -14,21 +14,21 @@ type (
 	// The Handler type is responsible for handling Topic related commands passed to an Executor implementation and
 	// modifying the state of topic data appropriately.
 	Handler struct {
-		topics Manager
+		topics Store
 		logger hclog.Logger
 	}
 
-	// The Manager interface describes types responsible for managing the state of Topics within a data store.
-	Manager interface {
+	// The Store interface describes types responsible for managing the state of Topics within a data store.
+	Store interface {
 		Create(ctx context.Context, t *topic.Topic) error
 		Delete(ctx context.Context, t string) error
 	}
 )
 
-// NewHandler returns a new instance of the Handler type that will modify topic data via the provided Manager
+// NewHandler returns a new instance of the Handler type that will modify topic data via the provided Store
 // implementation.
-func NewHandler(manager Manager, logger hclog.Logger) *Handler {
-	return &Handler{topics: manager, logger: logger.Named("topic")}
+func NewHandler(store Store, logger hclog.Logger) *Handler {
+	return &Handler{topics: store, logger: logger.Named("topic")}
 }
 
 // Create the topic described in the command.
@@ -41,6 +41,7 @@ func (h *Handler) Create(ctx context.Context, cmd *topiccmd.CreateTopic) error {
 		"name", cmd.GetTopic().GetName(),
 		"message_retention_period", cmd.GetTopic().GetMessageRetentionPeriod().AsDuration(),
 		"consumer_retention_period", cmd.GetTopic().GetConsumerRetentionPeriod().AsDuration(),
+		"require_verified_messages", cmd.GetTopic().GetRequireVerifiedMessages(),
 	)
 
 	return nil

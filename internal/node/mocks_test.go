@@ -26,6 +26,10 @@ type (
 	}
 )
 
+func (mm *MockStore) AllocateTopic(ctx context.Context, name string, topic string) error {
+	return mm.err
+}
+
 func (mm *MockStore) Add(ctx context.Context, node *node.Node) error {
 	mm.added = node
 	return mm.err

@@ -53,7 +53,7 @@ func TestHandler_Create(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
-			mock := &MockManager{err: tc.Error}
+			mock := &MockStore{err: tc.Error}
 			handler := topic.NewHandler(mock, hclog.NewNullLogger())
 
 			err := handler.Create(ctx, tc.Command)
@@ -98,7 +98,7 @@ func TestHandler_Delete(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
-			mock := &MockManager{err: tc.Error}
+			mock := &MockStore{err: tc.Error}
 			handler := topic.NewHandler(mock, hclog.NewNullLogger())
 
 			err := handler.Delete(ctx, tc.Command)

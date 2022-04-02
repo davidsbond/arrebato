@@ -28,6 +28,9 @@ type (
 		// Remove should remove a node from the store and return ErrNoNode if a record with the node name does
 		// not exist.
 		Remove(ctx context.Context, name string) error
+
+		// AllocateTopic should add a topic to the list of a node's allocated topics.
+		AllocateTopic(ctx context.Context, name string, topic string) error
 	}
 )
 
@@ -65,5 +68,15 @@ func (h *Handler) Remove(ctx context.Context, cmd *nodecmd.RemoveNode) error {
 	}
 
 	h.logger.Debug("removed node", "name", cmd.GetName())
+	return nil
+}
+
+// AllocateTopic adds a topic to a node's allocated topic list.
+func (h *Handler) AllocateTopic(ctx context.Context, cmd *nodecmd.AllocateTopic) error {
+	if err := h.store.AllocateTopic(ctx, cmd.GetName(), cmd.GetTopic()); err != nil {
+		return err
+	}
+
+	h.logger.Debug("allocated topic", "node", cmd.GetName(), "topic", cmd.GetTopic())
 	return nil
 }
