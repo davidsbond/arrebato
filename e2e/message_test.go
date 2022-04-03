@@ -31,7 +31,7 @@ func (s *MessageSuite) TestProduceConsumeMessages() {
 		Name:                    "test-suite-topic",
 		MessageRetentionPeriod:  time.Hour,
 		ConsumerRetentionPeriod: time.Hour,
-		Partitions:              100,
+		Partitions:              1,
 	}))
 
 	expected := structpb.NewStringValue("hello-world")

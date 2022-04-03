@@ -35,6 +35,7 @@ func TestPruner_PruneMessages(t *testing.T) {
 	require.NoError(t, topics.Create(ctx, &topicpb.Topic{
 		Name:                   "test-topic",
 		MessageRetentionPeriod: durationpb.New(time.Second),
+		Partitions:             1,
 	}))
 
 	messages := message.NewBoltStore(db)
@@ -69,7 +70,7 @@ func TestPruner_PruneMessages(t *testing.T) {
 	// be the second one we produced with the string "world" as the payload.
 	assert.Eventually(t, func() bool {
 		var gotMessage bool
-		_ = messages.Read(ctx, "test-topic", 0, func(ctx context.Context, m *messagepb.Message) error {
+		_ = messages.Read(ctx, "test-topic", 0, 0, func(ctx context.Context, m *messagepb.Message) error {
 			payload, err := m.GetValue().UnmarshalNew()
 			require.NoError(t, err)
 

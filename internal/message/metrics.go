@@ -16,7 +16,7 @@ type (
 	// The MetricSource interface describes types that can obtain statistics about the current state of messages that
 	// can be exported as metrics.
 	MetricSource interface {
-		Indexes(ctx context.Context) (map[string]uint64, error)
+		Indexes(ctx context.Context) (map[string]map[uint32]uint64, error)
 		Counts(ctx context.Context) (map[string]uint64, error)
 	}
 )
@@ -36,14 +36,20 @@ func (m *MetricExporter) Export(ctx context.Context) error {
 		return fmt.Errorf("failed to query message indexes: %w", err)
 	}
 
-	for topic, index := range indexes {
-		metrics.SetGaugeWithLabels([]string{"message", "index"}, float32(index),
-			[]metrics.Label{
-				{
-					Name:  "topic",
-					Value: topic,
-				},
-			})
+	for topic, partitions := range indexes {
+		for partition, index := range partitions {
+			metrics.SetGaugeWithLabels([]string{"message", "index"}, float32(index),
+				[]metrics.Label{
+					{
+						Name:  "topic",
+						Value: topic,
+					},
+					{
+						Name:  "partition",
+						Value: fmt.Sprint(partition),
+					},
+				})
+		}
 	}
 
 	counts, err := m.source.Counts(ctx)

@@ -68,10 +68,18 @@ func (bs *BoltStore) Create(_ context.Context, m *message.Message) (uint64, erro
 			return fmt.Errorf("failed to open message bucket: %w", err)
 		}
 
+		partitionKey := make([]byte, 8)
+		binary.BigEndian.PutUint32(partitionKey, m.GetPartition())
+
+		partition, err := messages.CreateBucketIfNotExists(partitionKey)
+		if err != nil {
+			return fmt.Errorf("failed to open partition bucket: %w", err)
+		}
+
 		// We leverage BoltDB's ability to generate sequences so that we can have an ordinal number representing the
 		// position in the log of the message. This will allow subscribers to read all messages from particular points
 		// in time.
-		index, err = messages.NextSequence()
+		index, err = partition.NextSequence()
 		if err != nil {
 			return fmt.Errorf("failed to generate index: %w", err)
 		}
@@ -89,7 +97,7 @@ func (bs *BoltStore) Create(_ context.Context, m *message.Message) (uint64, erro
 			return fmt.Errorf("failed to marshal payload: %w", err)
 		}
 
-		if err = messages.Put(key, value); err != nil {
+		if err = partition.Put(key, value); err != nil {
 			return fmt.Errorf("failed to store message: %w", err)
 		}
 
@@ -102,7 +110,7 @@ func (bs *BoltStore) Create(_ context.Context, m *message.Message) (uint64, erro
 // Read messages from the desired topic, starting at the desired index. Each message triggers an invocation of the
 // provided ReadFunc. This method blocks until the end of the messages is reached, the provided context is cancelled
 // or the ReadFunc returns an error.
-func (bs *BoltStore) Read(ctx context.Context, topic string, startIndex uint64, fn ReadFunc) error {
+func (bs *BoltStore) Read(ctx context.Context, topic string, partition uint32, startIndex uint64, fn ReadFunc) error {
 	return bs.db.View(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket([]byte(topicsKey))
 		if bucket == nil {
@@ -114,12 +122,20 @@ func (bs *BoltStore) Read(ctx context.Context, topic string, startIndex uint64, 
 			return ErrNoTopic
 		}
 
-		messages := topicBucket.Bucket([]byte(messagesKey))
-		if messages == nil {
+		messagesBucket := topicBucket.Bucket([]byte(messagesKey))
+		if messagesBucket == nil {
 			return ErrNoMessages
 		}
 
-		cursor := messages.Cursor()
+		partitionKey := make([]byte, 8)
+		binary.BigEndian.PutUint32(partitionKey, partition)
+
+		partitionBucket := messagesBucket.Bucket(partitionKey)
+		if partitionBucket == nil {
+			return ErrNoMessages
+		}
+
+		cursor := partitionBucket.Cursor()
 
 		// Keys are stored lexicographically as encoded uint64s, so we can iterate over them.
 		start := make([]byte, 8)
@@ -175,44 +191,57 @@ func (bs *BoltStore) Prune(ctx context.Context, topicName string, before time.Ti
 			return nil
 		}
 
-		cursor := messages.Cursor()
-
-		// Keys are stored lexicographically as encoded uint64s, so we can iterate over them.
-		start := make([]byte, 8)
-		binary.BigEndian.PutUint64(start, 0)
-
-		for k, v := cursor.Seek(start); k != nil; k, v = cursor.Next() {
+		// Iterate over each partition and remove messages.
+		return messages.ForEach(func(k, v []byte) error {
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
 
-			var m message.Message
-			if err := proto.Unmarshal(v, &m); err != nil {
-				return fmt.Errorf("failed to unmarshal message: %w", err)
+			partitionBucket := messages.Bucket(k)
+			if partitionBucket == nil {
+				return nil
 			}
 
-			// Once we've reached the first message that does not fall outside the retention period, we can stop
-			// iterating as we can safely assume all other messages are also within the retention period.
-			if m.GetTimestamp().AsTime().After(before) {
-				break
+			cursor := partitionBucket.Cursor()
+
+			// Keys are stored lexicographically as encoded uint64s, so we can iterate over them using a cursor,
+			// so we don't have to use ForEach.
+			start := make([]byte, 8)
+			binary.BigEndian.PutUint64(start, 0)
+
+			for k, v := cursor.Seek(start); k != nil; k, v = cursor.Next() {
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
+
+				var m message.Message
+				if err := proto.Unmarshal(v, &m); err != nil {
+					return fmt.Errorf("failed to unmarshal message: %w", err)
+				}
+
+				// Once we've reached the first message that does not fall outside the retention period, we can stop
+				// iterating as we can safely assume all other messages are also within the retention period.
+				if m.GetTimestamp().AsTime().After(before) {
+					break
+				}
+
+				if err := cursor.Delete(); err != nil {
+					return err
+				}
+
+				count++
 			}
 
-			if err := cursor.Delete(); err != nil {
-				return err
-			}
-
-			count++
-		}
-
-		return nil
+			return nil
+		})
 	})
 
 	return count, err
 }
 
 // Indexes returns the current message index of every known topic.
-func (bs *BoltStore) Indexes(ctx context.Context) (map[string]uint64, error) {
-	result := make(map[string]uint64)
+func (bs *BoltStore) Indexes(ctx context.Context) (map[string]map[uint32]uint64, error) {
+	result := make(map[string]map[uint32]uint64)
 
 	err := bs.db.View(func(tx *bbolt.Tx) error {
 		topicsBucket := tx.Bucket([]byte(topicsKey))
@@ -220,24 +249,29 @@ func (bs *BoltStore) Indexes(ctx context.Context) (map[string]uint64, error) {
 			return nil
 		}
 
-		return topicsBucket.ForEach(func(k, v []byte) error {
+		return topicsBucket.ForEach(func(topicKey, v []byte) error {
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
 
-			topicBucket := topicsBucket.Bucket(k)
+			topicBucket := topicsBucket.Bucket(topicKey)
 			if topicBucket == nil {
 				return nil
 			}
 
 			messages := topicBucket.Bucket([]byte(messagesKey))
-			if messages == nil {
-				result[string(k)] = 0
-				return nil
-			}
+			partitions := make(map[uint32]uint64)
+			result[string(topicKey)] = partitions
 
-			result[string(k)] = messages.Sequence()
-			return nil
+			return messages.ForEach(func(partitionKey, v []byte) error {
+				partition := messages.Bucket(partitionKey)
+				if partition == nil {
+					return nil
+				}
+
+				partitions[binary.BigEndian.Uint32(partitionKey)] = partition.Sequence()
+				return nil
+			})
 		})
 	})
 
@@ -270,7 +304,21 @@ func (bs *BoltStore) Counts(ctx context.Context) (map[string]uint64, error) {
 				return nil
 			}
 
-			result[string(k)] = uint64(messages.Stats().KeyN)
+			var total uint64
+			err := messages.ForEach(func(partitionKey, v []byte) error {
+				partition := messages.Bucket(partitionKey)
+				if partition == nil {
+					return nil
+				}
+
+				total += uint64(partition.Stats().KeyN)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+
+			result[string(k)] = total
 			return nil
 		})
 	})
