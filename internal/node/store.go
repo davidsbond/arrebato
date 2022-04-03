@@ -84,27 +84,10 @@ func (bs *BoltStore) Remove(ctx context.Context, name string) error {
 
 // LeastTopics returns the node with the least number of allocated topics.
 func (bs *BoltStore) LeastTopics(ctx context.Context) (*node.Node, error) {
-	nodes := make([]*node.Node, 0)
-	err := bs.db.View(func(tx *bbolt.Tx) error {
-		bucket := tx.Bucket([]byte(nodesKey))
-		if bucket == nil {
-			return ErrNoNode
-		}
-
-		return bucket.ForEach(func(_, v []byte) error {
-			if ctx.Err() != nil {
-				return ctx.Err()
-			}
-
-			var n node.Node
-			if err := proto.Unmarshal(v, &n); err != nil {
-				return fmt.Errorf("failed to unmarshal node: %w", err)
-			}
-
-			nodes = append(nodes, &n)
-			return nil
-		})
-	})
+	nodes, err := bs.List(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	var selected *node.Node
 	var lastCount int
@@ -171,4 +154,31 @@ func (bs *BoltStore) AllocateTopic(ctx context.Context, name, topic string) erro
 
 		return nil
 	})
+}
+
+// List all nodes within the state.
+func (bs *BoltStore) List(ctx context.Context) ([]*node.Node, error) {
+	nodes := make([]*node.Node, 0)
+	err := bs.db.View(func(tx *bbolt.Tx) error {
+		bucket := tx.Bucket([]byte(nodesKey))
+		if bucket == nil {
+			return ErrNoNode
+		}
+
+		return bucket.ForEach(func(_, v []byte) error {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+
+			var n node.Node
+			if err := proto.Unmarshal(v, &n); err != nil {
+				return fmt.Errorf("failed to unmarshal node: %w", err)
+			}
+
+			nodes = append(nodes, &n)
+			return nil
+		})
+	})
+
+	return nodes, err
 }
