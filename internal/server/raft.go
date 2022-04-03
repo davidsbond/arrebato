@@ -309,21 +309,85 @@ func (svr *Server) handleLeadership(ctx context.Context) error {
 			// it. If we didn't do this, a single node deployment would not be able to allocate any topics to itself
 			// as it wouldn't have its own node stored in the state, as the serf event would not occur that usually
 			// triggers this command being written.
-			cmd := command.New(&nodecmd.AddNode{
-				Node: &nodepb.Node{
-					Name: svr.config.AdvertiseAddress,
-				},
-			})
+			if err := svr.ensureNodeIsInState(ctx); err != nil {
+				return fmt.Errorf("failed to ensure node details are in the state: %w", err)
+			}
 
-			err := svr.executor.Execute(ctx, cmd)
-			switch {
-			case errors.Is(err, node.ErrNodeExists):
-				// If we already have the record, we might have obtained leadership from another node or just
-				// restarted, so we just ignore it.
-				break
-			case err != nil:
-				return fmt.Errorf("failed to execute command: %w", err)
+			// Next, we should ensure that every topic is allocated to a node, if any are not
+			// allocated, we will allocate them now. This could happen if a leadership transfer
+			// occurs when a topic is created. It's possible that the topic creation succeeds but
+			// the allocation fails due to the timing of the leadership transfer. So as a precaution
+			// we'll check for those now.
+			if err := svr.ensureTopicsAreAllocated(ctx); err != nil {
+				return fmt.Errorf("failed to ensure topics are allocated: %w", err)
 			}
 		}
 	}
+}
+
+func (svr *Server) ensureNodeIsInState(ctx context.Context) error {
+	cmd := command.New(&nodecmd.AddNode{
+		Node: &nodepb.Node{
+			Name: svr.config.AdvertiseAddress,
+		},
+	})
+
+	err := svr.executor.Execute(ctx, cmd)
+	switch {
+	case errors.Is(err, node.ErrNodeExists):
+		// If we already have the record, we might have obtained leadership from another node or just
+		// restarted, so we just ignore it.
+		return nil
+	case err != nil:
+		return fmt.Errorf("failed to execute command: %w", err)
+	default:
+		return nil
+	}
+}
+
+func (svr *Server) ensureTopicsAreAllocated(ctx context.Context) error {
+	topics, err := svr.topicStore.List(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to list topics: %w", err)
+	}
+
+	nodes, err := svr.nodeStore.List(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to list nodes: %w", err)
+	}
+
+	// First off, build up a list of topics that we know are allocated. We can then
+	// check the entire list of topics for their presence in this map, then allocate
+	// any that aren't there.
+	allocated := make(map[string]struct{})
+	for _, no := range nodes {
+		for _, tp := range no.GetTopics() {
+			allocated[tp] = struct{}{}
+		}
+	}
+
+	// Then, for each topic that is not in this list, we reallocate
+	for _, tp := range topics {
+		if _, ok := allocated[tp.GetName()]; ok {
+			continue
+		}
+
+		// Check which node has the least topics for each allocation, so that we evenly distribute
+		// them.
+		no, err := svr.nodeStore.LeastTopics(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to query nodes: %w", err)
+		}
+
+		cmd := command.New(&nodecmd.AllocateTopic{
+			Topic: tp.GetName(),
+			Name:  no.GetName(),
+		})
+
+		if err = svr.executor.Execute(ctx, cmd); err != nil {
+			return fmt.Errorf("failed to execute command: %w", err)
+		}
+	}
+
+	return nil
 }

@@ -112,3 +112,25 @@ func TestBoltStore_AllocateTopic(t *testing.T) {
 		require.NoError(t, store.AllocateTopic(ctx, "node-0", "topic-0"))
 	})
 }
+
+func TestBoltStore_List(t *testing.T) {
+	t.Parallel()
+
+	ctx := testutil.Context(t)
+	db := testutil.BoltDB(t)
+
+	store := node.NewBoltStore(db)
+
+	// Add a node to the state
+	require.NoError(t, store.Add(ctx, &nodepb.Node{
+		Name: "node-0",
+	}))
+
+	t.Run("It should return all nodes", func(t *testing.T) {
+		actual, err := store.List(ctx)
+		require.NoError(t, err)
+		if assert.Len(t, actual, 1) {
+			assert.EqualValues(t, "node-0", actual[0].GetName())
+		}
+	})
+}
