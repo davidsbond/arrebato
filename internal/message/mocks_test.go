@@ -72,7 +72,7 @@ func (mm *MockTopicIndexGetter) GetTopicIndex(ctx context.Context, topic string,
 	}, nil
 }
 
-func (mm *MockReader) Read(ctx context.Context, topic string, startIndex uint64, fn message.ReadFunc) error {
+func (mm *MockReader) Read(ctx context.Context, topic string, partition uint32, startIndex uint64, fn message.ReadFunc) error {
 	if mm.err != nil {
 		return mm.err
 	}

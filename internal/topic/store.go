@@ -2,6 +2,7 @@ package topic
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 
@@ -38,6 +39,7 @@ var (
 const (
 	topicInfoKey = "info"
 	topicsKey    = "topics"
+	messagesKey  = "messages"
 )
 
 // Create a new topic. Returns ErrTopicExists if a topic with the same name already exists.
@@ -64,6 +66,21 @@ func (bs *BoltStore) Create(_ context.Context, t *topic.Topic) error {
 
 		if err = topicBucket.Put(key, value); err != nil {
 			return fmt.Errorf("failed to store topic: %w", err)
+		}
+
+		// Prepare child buckets for messages and partitions.
+		messagesBucket, err := topicBucket.CreateBucket([]byte(messagesKey))
+		if err != nil {
+			return fmt.Errorf("failed to create bucket: %w", err)
+		}
+
+		for i := uint32(0); i < t.GetPartitions(); i++ {
+			key = make([]byte, 8)
+			binary.BigEndian.PutUint32(key, i)
+
+			if _, err = messagesBucket.CreateBucket(key); err != nil {
+				return fmt.Errorf("failed to create bucket: %w", err)
+			}
 		}
 
 		return nil

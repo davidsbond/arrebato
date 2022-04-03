@@ -41,7 +41,8 @@ func TestBoltStore_Create(t *testing.T) {
 
 	t.Run("It should create a message for a valid topic", func(t *testing.T) {
 		index, err := messages.Create(ctx, &messagepb.Message{
-			Topic: "test-topic",
+			Topic:     "test-topic",
+			Partition: 10,
 		})
 
 		assert.NoError(t, err)
@@ -53,7 +54,8 @@ func TestBoltStore_Create(t *testing.T) {
 
 		for i := 0; i < 100; i++ {
 			index, err := messages.Create(ctx, &messagepb.Message{
-				Topic: "test-topic",
+				Topic:     "test-topic",
+				Partition: 10,
 			})
 
 			require.True(t, index == lastIndex+1)
@@ -75,20 +77,22 @@ func TestBoltStore_Read(t *testing.T) {
 	messages := message.NewBoltStore(db)
 
 	t.Run("It should return an error if the topic does not exist", func(t *testing.T) {
-		err := messages.Read(ctx, "test-topic", 0, nil)
+		err := messages.Read(ctx, "test-topic", 0, 0, nil)
 
 		assert.EqualValues(t, message.ErrNoTopic, err)
 	})
 
 	// Create topic for future tests
 	require.NoError(t, topics.Create(ctx, &topicpb.Topic{
-		Name: "test-topic",
+		Name:       "test-topic",
+		Partitions: 1,
 	}))
 
 	// Insert 100 test messages for us to play with
 	for i := 0; i < 100; i++ {
 		_, err := messages.Create(ctx, &messagepb.Message{
-			Topic: "test-topic",
+			Topic:     "test-topic",
+			Partition: 0,
 		})
 
 		require.NoError(t, err)
@@ -97,7 +101,7 @@ func TestBoltStore_Read(t *testing.T) {
 	t.Run("It should read messages from the start of the stream", func(t *testing.T) {
 		handled := make([]*messagepb.Message, 0)
 
-		assert.NoError(t, messages.Read(ctx, "test-topic", 0, func(ctx context.Context, m *messagepb.Message) error {
+		assert.NoError(t, messages.Read(ctx, "test-topic", 0, 0, func(ctx context.Context, m *messagepb.Message) error {
 			handled = append(handled, m)
 			return nil
 		}))
@@ -108,7 +112,7 @@ func TestBoltStore_Read(t *testing.T) {
 	t.Run("It should read from an arbitrary point in the stream", func(t *testing.T) {
 		handled := make([]*messagepb.Message, 0)
 
-		assert.NoError(t, messages.Read(ctx, "test-topic", 10, func(ctx context.Context, m *messagepb.Message) error {
+		assert.NoError(t, messages.Read(ctx, "test-topic", 0, 10, func(ctx context.Context, m *messagepb.Message) error {
 			handled = append(handled, m)
 			return nil
 		}))
@@ -129,7 +133,8 @@ func TestBoltStore_Prune(t *testing.T) {
 	messages := message.NewBoltStore(db)
 
 	require.NoError(t, topics.Create(ctx, &topicpb.Topic{
-		Name: "test-topic",
+		Name:       "test-topic",
+		Partitions: 1,
 	}))
 
 	for i := 1; i < 11; i++ {
@@ -137,6 +142,7 @@ func TestBoltStore_Prune(t *testing.T) {
 		_, err := messages.Create(ctx, &messagepb.Message{
 			Topic:     "test-topic",
 			Timestamp: timestamppb.New(ts),
+			Partition: 0,
 		})
 
 		require.NoError(t, err)
@@ -163,13 +169,15 @@ func TestBoltStore_Indexes(t *testing.T) {
 	// Create some topics to get indexes for
 	for i := 0; i < 3; i++ {
 		require.NoError(t, topics.Create(ctx, &topicpb.Topic{
-			Name: strconv.Itoa(i),
+			Name:       strconv.Itoa(i),
+			Partitions: 1,
 		}))
 
 		// Add some messages for each topic
 		for j := 0; j < 10; j++ {
 			_, err := messages.Create(ctx, &messagepb.Message{
-				Topic: strconv.Itoa(i),
+				Topic:     strconv.Itoa(i),
+				Partition: 0,
 			})
 
 			require.NoError(t, err)
@@ -180,10 +188,16 @@ func TestBoltStore_Indexes(t *testing.T) {
 		actual, err := messages.Indexes(ctx)
 		require.NoError(t, err)
 
-		expected := map[string]uint64{
-			"0": 10,
-			"1": 10,
-			"2": 10,
+		expected := map[string]map[uint32]uint64{
+			"0": {
+				0: 10,
+			},
+			"1": {
+				0: 10,
+			},
+			"2": {
+				0: 10,
+			},
 		}
 
 		assert.EqualValues(t, expected, actual)

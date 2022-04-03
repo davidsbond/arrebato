@@ -27,6 +27,7 @@ func TestBoltStore_Create(t *testing.T) {
 		assert.NoError(t, topics.Create(ctx, &topicpb.Topic{
 			Name:                   topicName,
 			MessageRetentionPeriod: durationpb.New(retentionPeriod),
+			Partitions:             10,
 		}))
 	})
 
@@ -34,6 +35,7 @@ func TestBoltStore_Create(t *testing.T) {
 		err := topics.Create(ctx, &topicpb.Topic{
 			Name:                   topicName,
 			MessageRetentionPeriod: durationpb.New(retentionPeriod),
+			Partitions:             10,
 		})
 
 		assert.EqualValues(t, topic.ErrTopicExists, err)

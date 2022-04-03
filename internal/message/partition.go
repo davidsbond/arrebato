@@ -28,6 +28,11 @@ func NewCRC32Partitioner() *CRC32Partitioner {
 // Partition returns a uint32 value denoting the expected partition of the provided proto.Message implementation. The
 // message is deterministically marshalled and passed into the crc32 hashing function.
 func (p *CRC32Partitioner) Partition(m proto.Message, max uint32) (uint32, error) {
+	// Shortcut for topics that only have a single partition.
+	if max == 1 {
+		return 0, nil
+	}
+
 	// In order to ensure that we always choose the same partition for the same key/message content, we need to do
 	// proto encoding deterministically, as a small difference in the binary representation can change the checksum
 	// and then the designated partition.
