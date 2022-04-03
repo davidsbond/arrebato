@@ -81,3 +81,94 @@ func (bs *BoltStore) Remove(ctx context.Context, name string) error {
 		return nil
 	})
 }
+
+// LeastTopics returns the node with the least number of allocated topics.
+func (bs *BoltStore) LeastTopics(ctx context.Context) (*node.Node, error) {
+	nodes := make([]*node.Node, 0)
+	err := bs.db.View(func(tx *bbolt.Tx) error {
+		bucket := tx.Bucket([]byte(nodesKey))
+		if bucket == nil {
+			return ErrNoNode
+		}
+
+		return bucket.ForEach(func(_, v []byte) error {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+
+			var n node.Node
+			if err := proto.Unmarshal(v, &n); err != nil {
+				return fmt.Errorf("failed to unmarshal node: %w", err)
+			}
+
+			nodes = append(nodes, &n)
+			return nil
+		})
+	})
+
+	var selected *node.Node
+	var lastCount int
+
+	// Find the node with the least amount of allocated topics.
+	for _, n := range nodes {
+		if len(n.GetTopics()) < lastCount {
+			selected = n
+		}
+
+		lastCount = len(n.GetTopics())
+	}
+
+	// If we couldn't find one, or all nodes had the same number of topics,
+	// we'll just return the first one.
+	if selected == nil {
+		selected = nodes[0]
+	}
+
+	return selected, err
+}
+
+// AllocateTopic adds a topic to a node's allocated topics list. These are the topics that the node will permit
+// consumers for.
+func (bs *BoltStore) AllocateTopic(ctx context.Context, name, topic string) error {
+	return bs.db.Update(func(tx *bbolt.Tx) error {
+		bucket := tx.Bucket([]byte(nodesKey))
+		if bucket == nil {
+			return ErrNoNode
+		}
+
+		key := []byte(name)
+		value := bucket.Get(key)
+		if len(value) == 0 {
+			return ErrNoNode
+		}
+
+		var n node.Node
+		if err := proto.Unmarshal(value, &n); err != nil {
+			return fmt.Errorf("failed to unmarshal node: %w", err)
+		}
+
+		for _, t := range n.GetTopics() {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+
+			if t != topic {
+				continue
+			}
+
+			return nil
+		}
+
+		n.Topics = append(n.Topics, topic)
+		value, err := proto.Marshal(&n)
+		if err != nil {
+			return fmt.Errorf("failed to marshal node: %w", err)
+		}
+
+		if err = bucket.Put(key, value); err != nil {
+			return fmt.Errorf("failed to update node: %w", err)
+		}
+
+		return nil
+	})
+}

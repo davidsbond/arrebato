@@ -17,3 +17,9 @@ message AddNode {
 message RemoveNode {
   string name = 1;
 }
+
+// The AllocateTopic message is a command indicating that a topic has been allocated to a specific node.
+message AllocateTopic {
+  string name = 1;
+  string topic = 2;
+}

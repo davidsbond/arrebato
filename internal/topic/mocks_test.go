@@ -4,11 +4,12 @@ import (
 	"context"
 
 	"github.com/davidsbond/arrebato/internal/command"
+	nodepb "github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
 	topicpb "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/v1"
 )
 
 type (
-	MockManager struct {
+	MockStore struct {
 		err     error
 		created *topicpb.Topic
 		deleted string
@@ -23,7 +24,16 @@ type (
 		topic *topicpb.Topic
 		err   error
 	}
+
+	MockNodeStore struct {
+		node *nodepb.Node
+		err  error
+	}
 )
+
+func (mm *MockNodeStore) LeastTopics(ctx context.Context) (*nodepb.Node, error) {
+	return mm.node, mm.err
+}
 
 func (mm *MockQuerier) Get(ctx context.Context, name string) (*topicpb.Topic, error) {
 	if mm.err != nil {
@@ -41,7 +51,7 @@ func (mm *MockQuerier) List(ctx context.Context) ([]*topicpb.Topic, error) {
 	return []*topicpb.Topic{mm.topic}, nil
 }
 
-func (mm *MockManager) Create(ctx context.Context, t *topicpb.Topic) error {
+func (mm *MockStore) Create(ctx context.Context, t *topicpb.Topic) error {
 	if mm.err != nil {
 		return mm.err
 	}
@@ -50,7 +60,7 @@ func (mm *MockManager) Create(ctx context.Context, t *topicpb.Topic) error {
 	return nil
 }
 
-func (mm *MockManager) Delete(ctx context.Context, t string) error {
+func (mm *MockStore) Delete(ctx context.Context, t string) error {
 	if mm.err != nil {
 		return mm.err
 	}
@@ -62,6 +72,10 @@ func (mm *MockManager) Delete(ctx context.Context, t string) error {
 func (mm *MockExecutor) Execute(ctx context.Context, cmd command.Command) error {
 	if mm.err != nil {
 		return mm.err
+	}
+
+	if mm.command.Payload() != nil {
+		return nil
 	}
 
 	mm.command = cmd

@@ -116,3 +116,46 @@ func TestHandler_Remove(t *testing.T) {
 		})
 	}
 }
+
+func TestHandler_AllocateTopic(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		Name         string
+		Command      *nodecmd.AllocateTopic
+		ExpectsError bool
+		Error        error
+	}{
+		{
+			Name: "It should allocate the topic to the node",
+			Command: &nodecmd.AllocateTopic{
+				Name:  "node-0",
+				Topic: "topic-0",
+			},
+		},
+		{
+			Name:         "It should return an error if the node does not exist",
+			Error:        node.ErrNoNode,
+			ExpectsError: true,
+			Command: &nodecmd.AllocateTopic{
+				Name:  "node-0",
+				Topic: "topic-0",
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.Name, func(t *testing.T) {
+			ctx := testutil.Context(t)
+			store := &MockStore{err: tc.Error}
+
+			err := node.NewHandler(store, hclog.NewNullLogger()).AllocateTopic(ctx, tc.Command)
+			if tc.ExpectsError {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+		})
+	}
+}
