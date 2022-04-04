@@ -13,14 +13,14 @@ import (
 
 type (
 	// The Handler type is responsible for handling inbound commands relating to nodes from the raft log and updating
-	// the state within the Store.
+	// the state within the Modifier.
 	Handler struct {
-		store  Store
+		nodes  Modifier
 		logger hclog.Logger
 	}
 
-	// The Store interface describes types that persist node data.
-	Store interface {
+	// The Modifier interface describes types that modifys node data.
+	Modifier interface {
 		// Add should add a new node to the store and return ErrNodeExists if a record with the same name already
 		// exists.
 		Add(ctx context.Context, node *node.Node) error
@@ -35,17 +35,17 @@ type (
 )
 
 // NewHandler returns a new instance of the Handler type that will persist node data within the provided
-// Store implementation.
-func NewHandler(store Store, logger hclog.Logger) *Handler {
+// Modifier implementation.
+func NewHandler(modifier Modifier, logger hclog.Logger) *Handler {
 	return &Handler{
-		store:  store,
+		nodes:  modifier,
 		logger: logger.Named("node"),
 	}
 }
 
 // Add a new node to the store.
 func (h *Handler) Add(ctx context.Context, cmd *nodecmd.AddNode) error {
-	err := h.store.Add(ctx, cmd.GetNode())
+	err := h.nodes.Add(ctx, cmd.GetNode())
 	switch {
 	case errors.Is(err, ErrNodeExists):
 		return nil
@@ -59,7 +59,7 @@ func (h *Handler) Add(ctx context.Context, cmd *nodecmd.AddNode) error {
 
 // Remove a node from the store.
 func (h *Handler) Remove(ctx context.Context, cmd *nodecmd.RemoveNode) error {
-	err := h.store.Remove(ctx, cmd.GetName())
+	err := h.nodes.Remove(ctx, cmd.GetName())
 	switch {
 	case errors.Is(err, ErrNoNode):
 		return nil
@@ -73,7 +73,7 @@ func (h *Handler) Remove(ctx context.Context, cmd *nodecmd.RemoveNode) error {
 
 // AllocateTopic adds a topic to a node's allocated topic list.
 func (h *Handler) AllocateTopic(ctx context.Context, cmd *nodecmd.AllocateTopic) error {
-	if err := h.store.AllocateTopic(ctx, cmd.GetName(), cmd.GetTopic()); err != nil {
+	if err := h.nodes.AllocateTopic(ctx, cmd.GetName(), cmd.GetTopic()); err != nil {
 		return err
 	}
 

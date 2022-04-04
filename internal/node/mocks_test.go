@@ -20,22 +20,22 @@ type (
 		config raft.Configuration
 	}
 
-	MockStore struct {
+	MockModifier struct {
 		added *node.Node
 		err   error
 	}
 )
 
-func (mm *MockStore) AllocateTopic(ctx context.Context, name string, topic string) error {
+func (mm *MockModifier) AllocateTopic(ctx context.Context, name string, topic string) error {
 	return mm.err
 }
 
-func (mm *MockStore) Add(ctx context.Context, node *node.Node) error {
+func (mm *MockModifier) Add(ctx context.Context, node *node.Node) error {
 	mm.added = node
 	return mm.err
 }
 
-func (mm *MockStore) Remove(ctx context.Context, name string) error {
+func (mm *MockModifier) Remove(ctx context.Context, name string) error {
 	return mm.err
 }
 

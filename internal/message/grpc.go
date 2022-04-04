@@ -33,6 +33,7 @@ type (
 	// The GRPC type is a messagesvc.MessageServiceServer implementation that handles inbound gRPC requests to manage
 	// and query Messages.
 	GRPC struct {
+		nodeID      string
 		executor    Executor
 		reader      Reader
 		consumers   TopicIndexGetter
@@ -40,6 +41,7 @@ type (
 		topics      TopicGetter
 		acl         ACL
 		partitioner Partitioner
+		nodes       NodeStore
 	}
 
 	// The Executor interface describes types that execute commands related to Message data.
@@ -89,6 +91,10 @@ type (
 		// Partition should return a uint32 value within the range of 0 to max-1 based on the provided message.
 		Partition(m proto.Message, max uint32) (uint32, error)
 	}
+
+	NodeStore interface {
+		IsAllocatedToNode(ctx context.Context, name, topic string) (bool, error)
+	}
 )
 
 // NewGRPC returns a new instance of the GRPC type that will modify Message data via commands sent to the Executor and
@@ -104,6 +110,8 @@ func NewGRPC(
 	publicKeys PublicKeyGetter,
 	topics TopicGetter,
 	partitioner Partitioner,
+	nodeID string,
+	nodeStore NodeStore,
 ) *GRPC {
 	return &GRPC{
 		executor:    executor,
@@ -113,6 +121,8 @@ func NewGRPC(
 		publicKeys:  publicKeys,
 		topics:      topics,
 		partitioner: partitioner,
+		nodeID:      nodeID,
+		nodes:       nodeStore,
 	}
 }
 
@@ -201,6 +211,7 @@ func (svr *GRPC) Consume(request *messagesvc.ConsumeRequest, server messagesvc.M
 	ctx := server.Context()
 	info := clientinfo.FromContext(ctx)
 
+	// Ensure that the ACL allows this client to consume from the requested topic.
 	allowed, err := svr.canConsume(ctx, info, request.GetTopic())
 	switch {
 	case err != nil:
@@ -209,6 +220,16 @@ func (svr *GRPC) Consume(request *messagesvc.ConsumeRequest, server messagesvc.M
 		return status.Errorf(codes.PermissionDenied, "cannot consume messages on topic %s", request.GetTopic())
 	}
 
+	// Ensure that the topic is allocated to this node to keep all the consumers in the same place.
+	allocated, err := svr.nodes.IsAllocatedToNode(ctx, svr.nodeID, request.GetTopic())
+	switch {
+	case err != nil:
+		return status.Errorf(codes.Internal, "failed to query node: %v", err)
+	case !allocated:
+		return status.Errorf(codes.FailedPrecondition, "topic %s is not allocated to this node", request.GetTopic())
+	}
+
+	// Obtain the last known index for the consumer on this topic.
 	topicIndex, err := svr.consumers.GetTopicIndex(ctx,
 		request.GetTopic(),
 		request.GetConsumerId(),

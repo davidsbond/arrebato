@@ -182,3 +182,61 @@ func (bs *BoltStore) List(ctx context.Context) ([]*node.Node, error) {
 
 	return nodes, err
 }
+
+func (bs *BoltStore) Get(ctx context.Context, name string) (*node.Node, error) {
+	var n node.Node
+	err := bs.db.View(func(tx *bbolt.Tx) error {
+		bucket := tx.Bucket([]byte(nodesKey))
+		if bucket == nil {
+			return ErrNoNode
+		}
+
+		value := bucket.Get([]byte(name))
+		if value == nil {
+			return ErrNoNode
+		}
+
+		if err := proto.Unmarshal(value, &n); err != nil {
+			return fmt.Errorf("failed to unmarshal node: %w", err)
+		}
+
+		return nil
+	})
+
+	return &n, err
+}
+
+func (bs *BoltStore) IsAllocatedToNode(ctx context.Context, name, topic string) (bool, error) {
+	var allocated bool
+	err := bs.db.View(func(tx *bbolt.Tx) error {
+		bucket := tx.Bucket([]byte(nodesKey))
+		if bucket == nil {
+			return ErrNoNode
+		}
+
+		value := bucket.Get([]byte(name))
+		if value == nil {
+			return ErrNoNode
+		}
+
+		var n node.Node
+		if err := proto.Unmarshal(value, &n); err != nil {
+			return fmt.Errorf("failed to unmarshal node: %w", err)
+		}
+
+		for _, t := range n.GetTopics() {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+
+			if t == topic {
+				allocated = true
+				return nil
+			}
+		}
+
+		return nil
+	})
+
+	return allocated, err
+}

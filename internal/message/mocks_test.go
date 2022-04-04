@@ -50,7 +50,15 @@ type (
 	MockTopicGetter struct {
 		topic *topicpb.Topic
 	}
+
+	MockNodeStore struct {
+		allocated bool
+	}
 )
+
+func (mm *MockNodeStore) IsAllocatedToNode(ctx context.Context, name, topic string) (bool, error) {
+	return mm.allocated, nil
+}
 
 func (mm *MockTopicGetter) Get(ctx context.Context, name string) (*topicpb.Topic, error) {
 	return mm.topic, nil

@@ -157,7 +157,7 @@ func New(config Config) (*Server, error) {
 	// Node stack
 	server.nodeStore = node.NewBoltStore(server.store)
 	server.nodeHandler = node.NewHandler(server.nodeStore, server.logger)
-	server.nodeGRPC = node.NewGRPC(server.raft, raft.ServerID(config.AdvertiseAddress))
+	server.nodeGRPC = node.NewGRPC(server.raft, config.AdvertiseAddress, server.nodeStore)
 
 	// ACL stack
 	server.aclStore = acl.NewBoltStore(server.store)
@@ -190,6 +190,8 @@ func New(config Config) (*Server, error) {
 		server.signingStore,
 		server.topicStore,
 		partitioner,
+		config.AdvertiseAddress,
+		server.nodeStore,
 	)
 
 	// Pruning stack

@@ -55,7 +55,7 @@ func TestHandler_Add(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
 			ctx := testutil.Context(t)
-			store := &MockStore{err: tc.Error}
+			store := &MockModifier{err: tc.Error}
 
 			err := node.NewHandler(store, hclog.NewNullLogger()).Add(ctx, tc.Command)
 			if tc.ExpectsError {
@@ -104,7 +104,7 @@ func TestHandler_Remove(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
 			ctx := testutil.Context(t)
-			store := &MockStore{err: tc.Error}
+			store := &MockModifier{err: tc.Error}
 
 			err := node.NewHandler(store, hclog.NewNullLogger()).Remove(ctx, tc.Command)
 			if tc.ExpectsError {
@@ -147,7 +147,7 @@ func TestHandler_AllocateTopic(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
 			ctx := testutil.Context(t)
-			store := &MockStore{err: tc.Error}
+			store := &MockModifier{err: tc.Error}
 
 			err := node.NewHandler(store, hclog.NewNullLogger()).AllocateTopic(ctx, tc.Command)
 			if tc.ExpectsError {

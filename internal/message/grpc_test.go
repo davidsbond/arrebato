@@ -115,6 +115,8 @@ func TestGRPC_Produce(t *testing.T) {
 				publicKeys,
 				topics,
 				message.NewCRC32Partitioner(),
+				"",
+				nil,
 			)
 
 			resp, err := svc.Produce(ctx, tc.Request)
@@ -146,14 +148,16 @@ func TestGRPC_Consume(t *testing.T) {
 		Name         string
 		Request      *messagesvc.ConsumeRequest
 		ACLAllow     bool
+		Allocated    bool
 		SeedTopic    []*messagepb.Message
 		ExpectedCode codes.Code
 		Expected     []*messagepb.Message
 		Error        error
 	}{
 		{
-			Name:     "It should consume events from a valid topic",
-			ACLAllow: true,
+			Name:      "It should consume events from a valid topic",
+			ACLAllow:  true,
+			Allocated: true,
 			Request: &messagesvc.ConsumeRequest{
 				Topic:      "test-topic",
 				ConsumerId: "test-consumer",
@@ -167,8 +171,9 @@ func TestGRPC_Consume(t *testing.T) {
 			ExpectedCode: codes.DeadlineExceeded,
 		},
 		{
-			Name:     "It should return not found if the topic does not exist",
-			ACLAllow: true,
+			Name:      "It should return not found if the topic does not exist",
+			ACLAllow:  true,
+			Allocated: true,
 			Request: &messagesvc.ConsumeRequest{
 				Topic:      "test-topic",
 				ConsumerId: "test-consumer",
@@ -177,12 +182,22 @@ func TestGRPC_Consume(t *testing.T) {
 			ExpectedCode: codes.NotFound,
 		},
 		{
-			Name: "It should return permission denied if the ACL does not allow consuming",
+			Name:      "It should return permission denied if the ACL does not allow consuming",
+			Allocated: true,
 			Request: &messagesvc.ConsumeRequest{
 				Topic:      "test-topic",
 				ConsumerId: "test-consumer",
 			},
 			ExpectedCode: codes.PermissionDenied,
+		},
+		{
+			Name:     "It should return failed precondition if the topic is not allocated to the node",
+			ACLAllow: true,
+			Request: &messagesvc.ConsumeRequest{
+				Topic:      "test-topic",
+				ConsumerId: "test-consumer",
+			},
+			ExpectedCode: codes.FailedPrecondition,
 		},
 	}
 
@@ -195,8 +210,19 @@ func TestGRPC_Consume(t *testing.T) {
 			stream := &MockMessageConsumeServer{ctx: ctx}
 			reader := &MockReader{messages: tc.SeedTopic, err: tc.Error}
 			consumers := &MockTopicIndexGetter{}
+			nodes := &MockNodeStore{allocated: tc.Allocated}
 
-			err := message.NewGRPC(nil, reader, consumers, &MockACL{allowed: tc.ACLAllow}, nil, nil, nil).Consume(tc.Request, stream)
+			err := message.NewGRPC(
+				nil,
+				reader,
+				consumers,
+				&MockACL{allowed: tc.ACLAllow},
+				nil,
+				nil,
+				nil,
+				"",
+				nodes).Consume(tc.Request, stream)
+
 			require.EqualValues(t, tc.ExpectedCode, status.Code(err))
 
 			if tc.Error != nil || tc.ExpectedCode > codes.OK {
