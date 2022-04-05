@@ -33,6 +33,7 @@ type (
 	// The PublicKeyGetter interface describes types that can obtain a public key for a client.
 	PublicKeyGetter interface {
 		Get(ctx context.Context, clientID string) ([]byte, error)
+		List(ctx context.Context) ([]*signing.PublicKey, error)
 	}
 )
 
@@ -96,7 +97,25 @@ func (svr *GRPC) GetPublicKey(ctx context.Context, request *signingsvc.GetPublic
 		return nil, status.Errorf(codes.Internal, "failed to get public key: %v", err)
 	default:
 		return &signingsvc.GetPublicKeyResponse{
-			PublicKey: key,
+			PublicKey: &signing.PublicKey{
+				ClientId:  request.GetClientId(),
+				PublicKey: key,
+			},
+		}, nil
+	}
+}
+
+// ListPublicKeys returns all public keys stored within the server.
+func (svr *GRPC) ListPublicKeys(ctx context.Context, _ *signingsvc.ListPublicKeysRequest) (*signingsvc.ListPublicKeysResponse, error) {
+	keys, err := svr.publicKeys.List(ctx)
+	switch {
+	case errors.Is(err, context.Canceled):
+		return nil, status.Error(codes.Canceled, err.Error())
+	case err != nil:
+		return nil, status.Errorf(codes.Internal, "failed to list public keys: %v", err)
+	default:
+		return &signingsvc.ListPublicKeysResponse{
+			PublicKeys: keys,
 		}, nil
 	}
 }

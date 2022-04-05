@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/davidsbond/arrebato/internal/command"
+	"github.com/davidsbond/arrebato/internal/proto/arrebato/signing/v1"
 )
 
 type (
@@ -22,6 +23,15 @@ type (
 		key []byte
 	}
 )
+
+func (mm *MockPublicKeyGetter) List(ctx context.Context) ([]*signing.PublicKey, error) {
+	return []*signing.PublicKey{
+		{
+			PublicKey: mm.key,
+			ClientId:  "test-client",
+		},
+	}, nil
+}
 
 func (mm *MockPublicKeyGetter) Get(ctx context.Context, clientID string) ([]byte, error) {
 	return mm.key, mm.err

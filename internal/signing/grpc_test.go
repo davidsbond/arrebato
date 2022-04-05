@@ -11,6 +11,7 @@ import (
 	"github.com/davidsbond/arrebato/internal/command"
 	signingcmd "github.com/davidsbond/arrebato/internal/proto/arrebato/signing/command/v1"
 	signingsvc "github.com/davidsbond/arrebato/internal/proto/arrebato/signing/service/v1"
+	signingpb "github.com/davidsbond/arrebato/internal/proto/arrebato/signing/v1"
 	"github.com/davidsbond/arrebato/internal/signing"
 	"github.com/davidsbond/arrebato/internal/testutil"
 )
@@ -94,7 +95,10 @@ func TestGRPC_GetPublicKey(t *testing.T) {
 				ClientId: "test-client",
 			},
 			Expected: &signingsvc.GetPublicKeyResponse{
-				PublicKey: []byte("test"),
+				PublicKey: &signingpb.PublicKey{
+					ClientId:  "test-client",
+					PublicKey: []byte("test"),
+				},
 			},
 		},
 		{
@@ -113,6 +117,45 @@ func TestGRPC_GetPublicKey(t *testing.T) {
 			ctx := testutil.Context(t)
 
 			resp, err := signing.NewGRPC(nil, getter).GetPublicKey(ctx, tc.Request)
+			if tc.Error != nil || tc.ExpectedCode > codes.OK {
+				assert.Error(t, err)
+				assert.Nil(t, resp)
+				return
+			}
+
+			assert.True(t, proto.Equal(tc.Expected, resp))
+		})
+	}
+}
+
+func TestGRPC_ListPublicKeys(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		Name         string
+		Expected     *signingsvc.ListPublicKeysResponse
+		ExpectedCode codes.Code
+		Error        error
+	}{
+		{
+			Name: "It should return all public keys",
+			Expected: &signingsvc.ListPublicKeysResponse{
+				PublicKeys: []*signingpb.PublicKey{
+					{
+						ClientId:  "test-client",
+						PublicKey: []byte("test"),
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.Name, func(t *testing.T) {
+			getter := &MockPublicKeyGetter{err: tc.Error, key: []byte("test")}
+			ctx := testutil.Context(t)
+
+			resp, err := signing.NewGRPC(nil, getter).ListPublicKeys(ctx, nil)
 			if tc.Error != nil || tc.ExpectedCode > codes.OK {
 				assert.Error(t, err)
 				assert.Nil(t, resp)

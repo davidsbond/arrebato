@@ -22,8 +22,13 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SigningServiceClient interface {
+	// CreateKeyPair creates a new public/private key pair for signing messages for use by the client making
+	// the call.
 	CreateKeyPair(ctx context.Context, in *CreateKeyPairRequest, opts ...grpc.CallOption) (*CreateKeyPairResponse, error)
+	// GetPublicKey returns the public signing key of a specified client.
 	GetPublicKey(ctx context.Context, in *GetPublicKeyRequest, opts ...grpc.CallOption) (*GetPublicKeyResponse, error)
+	// ListPublicKeys returns all public keys stored within the server.
+	ListPublicKeys(ctx context.Context, in *ListPublicKeysRequest, opts ...grpc.CallOption) (*ListPublicKeysResponse, error)
 }
 
 type signingServiceClient struct {
@@ -52,12 +57,26 @@ func (c *signingServiceClient) GetPublicKey(ctx context.Context, in *GetPublicKe
 	return out, nil
 }
 
+func (c *signingServiceClient) ListPublicKeys(ctx context.Context, in *ListPublicKeysRequest, opts ...grpc.CallOption) (*ListPublicKeysResponse, error) {
+	out := new(ListPublicKeysResponse)
+	err := c.cc.Invoke(ctx, "/arrebato.signing.service.v1.SigningService/ListPublicKeys", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SigningServiceServer is the server API for SigningService service.
 // All implementations should embed UnimplementedSigningServiceServer
 // for forward compatibility
 type SigningServiceServer interface {
+	// CreateKeyPair creates a new public/private key pair for signing messages for use by the client making
+	// the call.
 	CreateKeyPair(context.Context, *CreateKeyPairRequest) (*CreateKeyPairResponse, error)
+	// GetPublicKey returns the public signing key of a specified client.
 	GetPublicKey(context.Context, *GetPublicKeyRequest) (*GetPublicKeyResponse, error)
+	// ListPublicKeys returns all public keys stored within the server.
+	ListPublicKeys(context.Context, *ListPublicKeysRequest) (*ListPublicKeysResponse, error)
 }
 
 // UnimplementedSigningServiceServer should be embedded to have forward compatible implementations.
@@ -69,6 +88,9 @@ func (UnimplementedSigningServiceServer) CreateKeyPair(context.Context, *CreateK
 }
 func (UnimplementedSigningServiceServer) GetPublicKey(context.Context, *GetPublicKeyRequest) (*GetPublicKeyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPublicKey not implemented")
+}
+func (UnimplementedSigningServiceServer) ListPublicKeys(context.Context, *ListPublicKeysRequest) (*ListPublicKeysResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListPublicKeys not implemented")
 }
 
 // UnsafeSigningServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -118,6 +140,24 @@ func _SigningService_GetPublicKey_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SigningService_ListPublicKeys_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPublicKeysRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SigningServiceServer).ListPublicKeys(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/arrebato.signing.service.v1.SigningService/ListPublicKeys",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SigningServiceServer).ListPublicKeys(ctx, req.(*ListPublicKeysRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SigningService_ServiceDesc is the grpc.ServiceDesc for SigningService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -132,6 +172,10 @@ var SigningService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetPublicKey",
 			Handler:    _SigningService_GetPublicKey_Handler,
+		},
+		{
+			MethodName: "ListPublicKeys",
+			Handler:    _SigningService_ListPublicKeys_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

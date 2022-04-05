@@ -2,12 +2,13 @@ package cmd
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 
+	"github.com/davidsbond/arrebato/internal/table"
 	"github.com/davidsbond/arrebato/pkg/arrebato"
 )
 
@@ -21,6 +22,7 @@ func List() *cobra.Command {
 
 	cmd.AddCommand(
 		listTopics(),
+		listSigningKeys(),
 	)
 
 	return cmd
@@ -39,25 +41,53 @@ func listTopics() *cobra.Command {
 				return err
 			}
 
-			names := make([]string, len(topics))
-			for i, topic := range topics {
-				names[i] = topic.Name
-			}
-
 			if jsonOut {
-				return json.NewEncoder(os.Stdout).Encode(names)
+				return json.NewEncoder(os.Stdout).Encode(topics)
 			}
 
-			for _, name := range names {
-				fmt.Println(name)
+			builder := table.NewBuilder("NAME", "MESSAGE RETENTION PERIOD", "CONSUMER RETENTION PERIOD", "REQUIRE VERIFIED MESSAGES")
+			for _, t := range topics {
+				builder.AddRow(t.Name, t.MessageRetentionPeriod, t.ConsumerRetentionPeriod, t.RequireVerifiedMessages)
 			}
 
-			return nil
+			return builder.Build(ctx, os.Stdout)
 		}),
 	}
 
 	flags := cmd.PersistentFlags()
-	flags.BoolVar(&jsonOut, "json", false, "Output topic names in JSON format")
+	flags.BoolVar(&jsonOut, "json", false, "Output topics in JSON format")
+
+	return cmd
+}
+
+func listSigningKeys() *cobra.Command {
+	var jsonOut bool
+
+	cmd := &cobra.Command{
+		Use:   "signing-keys [flags]",
+		Short: "List all public signing keys",
+		Long:  "This command returns a list of all public signing keys within the server",
+		RunE: withClient(func(ctx context.Context, client *arrebato.Client, args []string) error {
+			keys, err := client.PublicKeys(ctx)
+			if err != nil {
+				return err
+			}
+
+			if jsonOut {
+				return json.NewEncoder(os.Stdout).Encode(keys)
+			}
+
+			builder := table.NewBuilder("CLIENT ID", "PUBLIC KEY")
+			for _, k := range keys {
+				builder.AddRow(k.ClientID, base64.StdEncoding.EncodeToString(k.PublicKey))
+			}
+
+			return builder.Build(ctx, os.Stdout)
+		}),
+	}
+
+	flags := cmd.PersistentFlags()
+	flags.BoolVar(&jsonOut, "json", false, "Output public keys in JSON format")
 
 	return cmd
 }
