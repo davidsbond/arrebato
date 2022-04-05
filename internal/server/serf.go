@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"path/filepath"
+	"strconv"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/memberlist"
@@ -18,6 +20,14 @@ type (
 		// The Port to use for serf transport.
 		Port int
 	}
+)
+
+const (
+	voterKey            = "voter"
+	raftPortKey         = "raft_port"
+	grpcPortKey         = "grpc_port"
+	roleKey             = "role"
+	advertiseAddressKey = "advertise_address"
 )
 
 func setupSerf(config Config, logger hclog.Logger) (<-chan serf.Event, *serf.Serf, error) {
@@ -40,6 +50,13 @@ func setupSerf(config Config, logger hclog.Logger) (<-chan serf.Event, *serf.Ser
 	serfConfig.NodeName = config.AdvertiseAddress
 	serfConfig.SnapshotPath = filepath.Join(config.DataPath, "serf.db")
 	serfConfig.RejoinAfterLeave = true
+	serfConfig.Tags = map[string]string{
+		voterKey:            strconv.FormatBool(!config.Raft.NonVoter),
+		raftPortKey:         strconv.Itoa(config.Raft.Port),
+		grpcPortKey:         strconv.Itoa(config.GRPC.Port),
+		advertiseAddressKey: config.AdvertiseAddress,
+		roleKey:             "server",
+	}
 
 	s, err := serf.Create(serfConfig)
 	if err != nil {
@@ -107,6 +124,10 @@ func (svr *Server) handleSerfEventMemberJoin(ctx context.Context, event serf.Mem
 			return ctx.Err()
 		}
 
+		if !isServer(member.Tags) {
+			continue
+		}
+
 		future := svr.raft.GetConfiguration()
 		if future.Error() != nil {
 			return fmt.Errorf("failed to get raft configuration: %w", future.Error())
@@ -127,8 +148,16 @@ func (svr *Server) handleSerfEventMemberJoin(ctx context.Context, event serf.Mem
 			}
 		}
 
-		peer := fmt.Sprint(member.Name, ":", svr.config.Raft.Port)
-		err := svr.raft.AddVoter(serverID, raft.ServerAddress(peer), 0, svr.config.Raft.Timeout).Error()
+		var err error
+		voter := isVoter(member.Tags)
+		peer := net.JoinHostPort(member.Tags[advertiseAddressKey], member.Tags[raftPortKey])
+
+		if voter {
+			err = svr.raft.AddVoter(serverID, raft.ServerAddress(peer), 0, svr.config.Raft.Timeout).Error()
+		} else {
+			err = svr.raft.AddNonvoter(serverID, raft.ServerAddress(peer), 0, svr.config.Raft.Timeout).Error()
+		}
+
 		switch {
 		case errors.Is(err, raft.ErrLeadershipLost):
 			return nil
@@ -150,6 +179,10 @@ func (svr *Server) handleSerfEventMemberLeave(ctx context.Context, event serf.Me
 			return ctx.Err()
 		}
 
+		if !isServer(member.Tags) {
+			continue
+		}
+
 		svr.logger.Info("removing server", "name", member.Name)
 		err := svr.raft.RemoveServer(raft.ServerID(member.Name), 0, svr.config.Raft.Timeout).Error()
 		switch {
@@ -161,4 +194,12 @@ func (svr *Server) handleSerfEventMemberLeave(ctx context.Context, event serf.Me
 	}
 
 	return nil
+}
+
+func isVoter(m map[string]string) bool {
+	return m[voterKey] == "true"
+}
+
+func isServer(m map[string]string) bool {
+	return m[roleKey] == "server"
 }
