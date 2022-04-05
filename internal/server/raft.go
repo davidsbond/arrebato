@@ -40,6 +40,10 @@ type (
 
 		// MaxSnapshots is the maximum number of raft snapshots to keep.
 		MaxSnapshots int
+
+		// NonVoter determines if the server is added to the cluster as a replica that can
+		// never gain leadership.
+		NonVoter bool
 	}
 )
 
@@ -105,10 +109,15 @@ func setupRaft(config Config, fsm raft.FSM, logger hclog.Logger) (*raft.Raft, *r
 		return nil, nil, err
 	}
 
+	suffrage := raft.Voter
+	if config.Raft.NonVoter {
+		suffrage = raft.Nonvoter
+	}
+
 	bootstrap := raft.Configuration{
 		Servers: []raft.Server{
 			{
-				Suffrage: raft.Voter,
+				Suffrage: suffrage,
 				ID:       raftConfig.LocalID,
 				Address:  raft.ServerAddress(raftAddress),
 			},

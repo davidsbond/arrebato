@@ -49,6 +49,7 @@ func Server() *cobra.Command {
 	flags.DurationVar(&config.Raft.Timeout, "raft-timeout", time.Minute, "The timeout to use for raft transport")
 	flags.IntVar(&config.Raft.MaxSnapshots, "raft-max-snapshots", 3, "The maximum number of raft snapshots to store")
 	flags.IntVar(&config.Raft.MaxPool, "raft-max-pool", 3, "The maximum number of connections in the raft connection pool")
+	flags.BoolVar(&config.Raft.NonVoter, "raft-non-voter", false, "If true, this server will never obtain leadership and will be a read-only replica")
 
 	// Serf configuration
 	flags.IntVar(&config.Serf.Port, "serf-port", 5001, "The port to use for serf transport")
