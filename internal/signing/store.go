@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/davidsbond/arrebato/internal/proto/arrebato/signing/v1"
+
 	"go.etcd.io/bbolt"
 )
 
@@ -74,4 +76,30 @@ func (bs *BoltStore) Create(ctx context.Context, clientID string, publicKey []by
 
 		return nil
 	})
+}
+
+// List all public keys stored in state.
+func (bs *BoltStore) List(ctx context.Context) ([]*signing.PublicKey, error) {
+	var keys []*signing.PublicKey
+	err := bs.db.View(func(tx *bbolt.Tx) error {
+		bucket := tx.Bucket([]byte(signingKey))
+		if bucket == nil {
+			return nil
+		}
+
+		return bucket.ForEach(func(k, v []byte) error {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+
+			keys = append(keys, &signing.PublicKey{
+				ClientId:  string(k),
+				PublicKey: v,
+			})
+
+			return nil
+		})
+	})
+
+	return keys, err
 }

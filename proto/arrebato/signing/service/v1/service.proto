@@ -10,20 +10,43 @@ option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/sign
 
 // The SigningService is a gRPC service that can manage signing keys within the cluster.
 service SigningService {
+  // CreateKeyPair creates a new public/private key pair for signing messages for use by the client making
+  // the call.
   rpc CreateKeyPair(CreateKeyPairRequest) returns (CreateKeyPairResponse);
+
+  // GetPublicKey returns the public signing key of a specified client.
   rpc GetPublicKey(GetPublicKeyRequest) returns (GetPublicKeyResponse);
+
+  // ListPublicKeys returns all public keys stored within the server.
+  rpc ListPublicKeys(ListPublicKeysRequest) returns (ListPublicKeysResponse);
 }
 
+// The CreateKeyPairRequest message is the request DTO when calling SigningService.CreateKeyPair.
 message CreateKeyPairRequest {}
 
+// The CreateKeyPairResponse message is the response DTO when calling SigningService.CreateKeyPair.
 message CreateKeyPairResponse {
+  // The generated public/private key pair.
   arrebato.signing.v1.KeyPair key_pair = 1;
 }
 
+// The GetPublicKeyRequest message is the request DTO when calling SigningService.GetPublicKey.
 message GetPublicKeyRequest {
+  // The client to obtain the public key of.
   string client_id = 1;
 }
 
+// The GetPublicKeyResponse message is the request DTO when calling SigningService.GetPublicKey.
 message GetPublicKeyResponse {
-  bytes public_key = 1;
+  // The client's public key.
+  arrebato.signing.v1.PublicKey public_key = 1;
+}
+
+// The ListPublicKeysRequest message is the request DTO when calling SigningService.ListPublicKeys.
+message ListPublicKeysRequest {}
+
+// The ListPublicKeysRequest message is the response DTO when calling SigningService.ListPublicKeys.
+message ListPublicKeysResponse {
+  // The public keys stored in the server.
+  repeated arrebato.signing.v1.PublicKey public_keys = 1;
 }

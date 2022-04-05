@@ -16,6 +16,12 @@ type (
 		PublicKey  []byte `json:"publicKey"`
 		PrivateKey []byte `json:"privateKey"`
 	}
+
+	// The PublicKey type contains the public key used for verifying signatures for a single client.
+	PublicKey struct {
+		ClientID  string `json:"clientId"`
+		PublicKey []byte `json:"publicKey"`
+	}
 )
 
 var (
@@ -59,6 +65,25 @@ func (c *Client) SigningPublicKey(ctx context.Context, clientID string) ([]byte,
 	case err != nil:
 		return nil, err
 	default:
-		return resp.GetPublicKey(), nil
+		return resp.GetPublicKey().GetPublicKey(), nil
 	}
+}
+
+// PublicKeys attempts to return all public keys stored in the server.
+func (c *Client) PublicKeys(ctx context.Context) ([]PublicKey, error) {
+	svc := signingsvc.NewSigningServiceClient(c.cluster.any())
+	resp, err := svc.ListPublicKeys(ctx, &signingsvc.ListPublicKeysRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]PublicKey, len(resp.GetPublicKeys()))
+	for i, k := range resp.GetPublicKeys() {
+		out[i] = PublicKey{
+			ClientID:  k.GetClientId(),
+			PublicKey: k.GetPublicKey(),
+		}
+	}
+
+	return out, nil
 }

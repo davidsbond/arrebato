@@ -12,3 +12,11 @@ message KeyPair {
   // The public key for validating message key signatures.
   bytes public_key = 2;
 }
+
+// The PublicKey message describes a public signing key owned by a specific client.
+message PublicKey {
+  // The client that owns the public key.
+  string client_id = 1;
+  // The public key for validating message key signatures.
+  bytes public_key = 2;
+}
