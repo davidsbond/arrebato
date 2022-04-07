@@ -30,7 +30,6 @@ type (
 
 const (
 	voterKey            = "voter"
-	raftPortKey         = "raft_port"
 	grpcPortKey         = "grpc_port"
 	roleKey             = "role"
 	advertiseAddressKey = "advertise_address"
@@ -86,7 +85,6 @@ func setupSerf(config Config, logger hclog.Logger) (<-chan serf.Event, *serf.Ser
 	serfConfig.RejoinAfterLeave = true
 	serfConfig.Tags = map[string]string{
 		voterKey:            strconv.FormatBool(!config.Raft.NonVoter),
-		raftPortKey:         strconv.Itoa(config.Raft.Port),
 		grpcPortKey:         strconv.Itoa(config.GRPC.Port),
 		advertiseAddressKey: config.AdvertiseAddress,
 		roleKey:             "server",
@@ -149,10 +147,6 @@ func (svr *Server) handleSerfMemberEvent(ctx context.Context, event serf.MemberE
 }
 
 func (svr *Server) handleSerfEventMemberJoin(ctx context.Context, event serf.MemberEvent) error {
-	if err := svr.raft.VerifyLeader().Error(); err != nil {
-		return nil
-	}
-
 	for _, member := range event.Members {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -168,6 +162,11 @@ func (svr *Server) handleSerfEventMemberJoin(ctx context.Context, event serf.Mem
 		}
 
 		serverID := raft.ServerID(member.Name)
+
+		if err := svr.raft.VerifyLeader().Error(); err != nil {
+			return nil
+		}
+
 		for _, server := range future.Configuration().Servers {
 			if serverID != server.ID {
 				continue
@@ -184,7 +183,7 @@ func (svr *Server) handleSerfEventMemberJoin(ctx context.Context, event serf.Mem
 
 		var err error
 		voter := isVoter(member.Tags)
-		peer := net.JoinHostPort(member.Tags[advertiseAddressKey], member.Tags[raftPortKey])
+		peer := net.JoinHostPort(member.Tags[advertiseAddressKey], member.Tags[grpcPortKey])
 
 		if voter {
 			err = svr.raft.AddVoter(serverID, raft.ServerAddress(peer), 0, svr.config.Raft.Timeout).Error()

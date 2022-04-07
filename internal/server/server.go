@@ -26,6 +26,7 @@ import (
 	"github.com/davidsbond/arrebato/internal/message"
 	"github.com/davidsbond/arrebato/internal/node"
 	"github.com/davidsbond/arrebato/internal/prune"
+	raftgrpc "github.com/davidsbond/arrebato/internal/raft"
 	"github.com/davidsbond/arrebato/internal/signing"
 	"github.com/davidsbond/arrebato/internal/topic"
 )
@@ -33,15 +34,20 @@ import (
 type (
 	// The Server type represents the entire arrebato node and stitches together the serf, raft & grpc configuration.
 	Server struct {
-		config     Config
-		logger     hclog.Logger
-		raft       *raft.Raft
-		raftStore  *raftboltdb.BoltStore
+		config Config
+		logger hclog.Logger
+
 		serf       *serf.Serf
 		serfEvents <-chan serf.Event
 		store      *bbolt.DB
 		restore    chan struct{}
 		pruner     *prune.Pruner
+
+		// Dependencies for Raft
+		raft          *raft.Raft
+		raftStore     *raftboltdb.BoltStore
+		raftGRPC      *raftgrpc.GRPC
+		raftTransport *raftgrpc.Transport
 
 		// Dependencies for ACLs
 		aclStore   *acl.BoltStore
@@ -134,10 +140,11 @@ func New(config Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to setup serf: %w", err)
 	}
 
-	server.raft, server.raftStore, err = setupRaft(config, server, server.logger)
+	server.raft, server.raftStore, server.raftTransport, err = setupRaft(config, server, server.logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup raft: %w", err)
 	}
+	server.raftGRPC = raftgrpc.NewGRPC(server.raftTransport)
 
 	server.store, err = setupStore(config, server.logger)
 	if err != nil {

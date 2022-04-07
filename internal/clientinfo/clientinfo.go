@@ -126,3 +126,23 @@ func MetadataExtractor(ctx context.Context) (ClientInfo, error) {
 		ID: strings.Join(values, ""),
 	}, nil
 }
+
+func UnaryClientInterceptor(clientID string) grpc.UnaryClientInterceptor {
+	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+		if clientID != "" {
+			ctx = metadata.AppendToOutgoingContext(ctx, "X-Client-ID", clientID)
+		}
+
+		return invoker(ctx, method, req, reply, cc, opts...)
+	}
+}
+
+func StreamClientInterceptor(clientID string) grpc.StreamClientInterceptor {
+	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+		if clientID != "" {
+			ctx = metadata.AppendToOutgoingContext(ctx, "X-Client-ID", clientID)
+		}
+
+		return streamer(ctx, desc, cc, method, opts...)
+	}
+}

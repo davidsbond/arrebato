@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package arrebato.raft.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/raft/v1;raft";
+
+message Log {
+  uint64 index = 1;
+  uint64 term = 2;
+  LogType type = 3;
+  bytes data = 4;
+  bytes extensions = 5;
+  google.protobuf.Timestamp appended_at = 6;
+}
+
+enum LogType {
+  LOG_TYPE_UNSPECIFIED = 0;
+  LOG_TYPE_COMMAND = 1;
+  LOG_TYPE_NOOP = 2;
+  LOG_TYPE_ADD_PEER_DEPRECATED = 3;
+  LOG_TYPE_REMOVE_PEER_DEPRECATED = 4;
+  LOG_TYPE_BARRIER = 5;
+  LOG_TYPE_CONFIGURATION = 6;
+}
