@@ -53,6 +53,7 @@ func Server() *cobra.Command {
 
 	// Serf configuration
 	flags.IntVar(&config.Serf.Port, "serf-port", 5001, "The port to use for serf transport")
+	flags.StringVar(&config.Serf.EncryptionKeyFile, "serf-encryption-key", "", "The path to the encryption key file used for serf transport")
 
 	// gRPC configuration
 	flags.IntVar(&config.GRPC.Port, "grpc-port", 5002, "The port to use for gRPC transport")

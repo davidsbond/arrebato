@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 	"strconv"
 
@@ -19,6 +20,11 @@ type (
 	SerfConfig struct {
 		// The Port to use for serf transport.
 		Port int
+
+		// The location of the file whose contents should contain the primary encryption key for
+		// gossip messages. The file contents should be either 16, 24, or 32 bytes to select AES-128,
+		// AES-192, or AES-256.
+		EncryptionKeyFile string
 	}
 )
 
@@ -31,24 +37,52 @@ const (
 )
 
 func setupSerf(config Config, logger hclog.Logger) (<-chan serf.Event, *serf.Serf, error) {
+	var secretKey []byte
+	if config.Serf.EncryptionKeyFile != "" {
+		data, err := os.ReadFile(config.Serf.EncryptionKeyFile)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to read encryption key file: %w", err)
+		}
+
+		secretKey = data
+	}
+
+	if len(secretKey) == 0 {
+		logger.Warn("serf will not use an encryption key, gossip will be insecure")
+	}
+
 	memberlistConfig := memberlist.DefaultLANConfig()
 	memberlistConfig.BindAddr = config.BindAddress
 	memberlistConfig.BindPort = config.Serf.Port
 	memberlistConfig.AdvertiseAddr = config.AdvertiseAddress
 	memberlistConfig.AdvertisePort = config.Serf.Port
 	memberlistConfig.Logger = logger.StandardLogger(&hclog.StandardLoggerOptions{
+		InferLevels:              true,
 		InferLevelsWithTimestamp: true,
 	})
+	if len(secretKey) > 0 {
+		memberlistConfig.SecretKey = secretKey
+		memberlistConfig.GossipVerifyIncoming = true
+		memberlistConfig.GossipVerifyOutgoing = true
+	}
 
 	serfEvents := make(chan serf.Event, 1)
 	serfConfig := serf.DefaultConfig()
 	serfConfig.Logger = logger.StandardLogger(&hclog.StandardLoggerOptions{
+		InferLevels:              true,
 		InferLevelsWithTimestamp: true,
 	})
 
+	// There are multiple serf files that need persisting, we place them under their own
+	// directory in the data path. We make sure that exists first.
+	if err := os.MkdirAll(filepath.Join(config.DataPath, "serf"), 0o750); err != nil {
+		return nil, nil, fmt.Errorf("failed to create serf directory: %w", err)
+	}
+
 	serfConfig.EventCh = serfEvents
 	serfConfig.NodeName = config.AdvertiseAddress
-	serfConfig.SnapshotPath = filepath.Join(config.DataPath, "serf.db")
+	serfConfig.SnapshotPath = filepath.Join(config.DataPath, "serf", "serf.db")
+	serfConfig.KeyringFile = filepath.Join(config.DataPath, "serf", "serf.keyring")
 	serfConfig.RejoinAfterLeave = true
 	serfConfig.Tags = map[string]string{
 		voterKey:            strconv.FormatBool(!config.Raft.NonVoter),

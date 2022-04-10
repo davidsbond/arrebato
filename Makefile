@@ -82,5 +82,9 @@ generate-certs:
 	openssl x509 -req -in client-req.pem -days 60 -CA ca-cert.pem -CAkey ca-key.pem -CAcreateserial -out client-cert.pem -extfile hack/v3.ext
 	rm *-req.pem
 
+generate-serf-key:
+	rm -rf serf.key
+	hexdump -n 16 -e '4/4 "%08X" 1 "\n"' /dev/urandom > serf.key
+
 kubeval: kustomize
 	kubeval install.yaml

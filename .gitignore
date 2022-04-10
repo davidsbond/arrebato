@@ -6,3 +6,4 @@ dist/
 *.pem
 *.srl
 *.upx
+serf.key
