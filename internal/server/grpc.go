@@ -74,6 +74,8 @@ func (svr *Server) serveGRPC(ctx context.Context) error {
 
 		options = append(options, grpc.Creds(credentials.NewTLS(config)))
 		infoExtractor = clientinfo.TLSExtractor
+	} else {
+		svr.logger.Warn("no TLS credentials were provided, gRPC transport will be insecure")
 	}
 
 	options = append(options,

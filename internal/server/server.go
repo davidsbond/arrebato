@@ -74,9 +74,6 @@ type (
 
 	// The Config type contains configuration values for the Server.
 	Config struct {
-		// Version of the server.
-		Version string
-
 		// LogLevel denotes the verbosity of logs.
 		LogLevel int
 
@@ -191,6 +188,7 @@ func New(config Config) (*Server, error) {
 }
 
 func setupStore(config Config, logger hclog.Logger) (*bbolt.DB, error) {
+	const mode = 0o755
 	options := bbolt.DefaultOptions
 
 	snapshot := filepath.Join(config.DataPath, "state_snapshot.db")
@@ -201,7 +199,7 @@ func setupStore(config Config, logger hclog.Logger) (*bbolt.DB, error) {
 	case errors.Is(err, os.ErrNotExist):
 		// We don't have a snapshot file waiting to be replaced, so just open the normal store.
 		logger.Debug("no restored snapshots found, opening default store")
-		return bbolt.Open(store, 0o755, options)
+		return bbolt.Open(store, mode, options)
 	case err != nil:
 		return nil, err
 	}
@@ -218,7 +216,7 @@ func setupStore(config Config, logger hclog.Logger) (*bbolt.DB, error) {
 		return nil, err
 	}
 
-	return bbolt.Open(store, 0o755, options)
+	return bbolt.Open(store, mode, options)
 }
 
 // ErrReload is the error given when the server has read a snapshot and must be restarted to restore its state.
