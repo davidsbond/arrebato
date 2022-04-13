@@ -3,7 +3,7 @@ module github.com/davidsbond/arrebato
 go 1.18
 
 require (
-	github.com/anchore/syft v0.43.2
+	github.com/anchore/syft v0.44.0
 	github.com/armon/go-metrics v0.3.10
 	github.com/bufbuild/buf v1.3.1
 	github.com/golangci/golangci-lint v1.45.2
