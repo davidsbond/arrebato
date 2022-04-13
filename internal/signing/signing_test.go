@@ -26,6 +26,18 @@ func TestSignProto(t *testing.T) {
 		assert.NotEmpty(t, signedMessage)
 	})
 
+	t.Run("The same message should produce the same signature", func(t *testing.T) {
+		expected, err := signing.SignProto(message, privateKey)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, expected)
+
+		for i := 0; i < 100; i++ {
+			actual, err := signing.SignProto(message, privateKey)
+			assert.NoError(t, err)
+			assert.True(t, bytes.Equal(expected, actual))
+		}
+	})
+
 	t.Run("The signed message should be verifiable using the public key", func(t *testing.T) {
 		assert.True(t, signing.Verify(signedMessage, publicKey))
 		assert.False(t, signing.Verify(signedMessage, bytes.Repeat([]byte("a"), 32)))

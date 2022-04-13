@@ -20,12 +20,14 @@ func NewKeyPair() (public []byte, private []byte, err error) {
 	return pu[:], pb[:], nil
 }
 
-// SignProto encodes the proto.Message and signs it using the private key, returning a signature. The
-// proto-encoding is not deterministic so there is no guarantee that the same message produces the exact same signature.
-// However, it is only important that the signature is verifiable against the public key, so the consistency of the
-// proto-encoding should not matter. Ed25519 is used to sign messages.
+// SignProto encodes the proto.Message and signs it using the private key, returning a signature. Ed25519 is used to
+// sign messages.
 func SignProto(m proto.Message, privateKey []byte) ([]byte, error) {
-	data, err := proto.Marshal(m)
+	options := proto.MarshalOptions{
+		Deterministic: true,
+	}
+
+	data, err := options.Marshal(m)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal message: %w", err)
 	}
