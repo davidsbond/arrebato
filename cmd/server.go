@@ -45,24 +45,24 @@ func Server() *cobra.Command {
 	flags.DurationVar(&config.PruneInterval, "prune-interval", time.Minute, "The amount of time between message pruning runs")
 
 	// Raft configuration
-	flags.IntVar(&config.Raft.Port, "raft-port", 5000, "The port to use for raft transport")
 	flags.DurationVar(&config.Raft.Timeout, "raft-timeout", time.Minute, "The timeout to use for raft transport")
 	flags.IntVar(&config.Raft.MaxSnapshots, "raft-max-snapshots", 3, "The maximum number of raft snapshots to store")
-	flags.IntVar(&config.Raft.MaxPool, "raft-max-pool", 3, "The maximum number of connections in the raft connection pool")
 	flags.BoolVar(&config.Raft.NonVoter, "raft-non-voter", false, "If true, this server will never obtain leadership and will be a read-only replica")
+
+	// gRPC configuration
+	flags.IntVar(&config.GRPC.Port, "grpc-port", 5000, "The port to use for gRPC transport")
 
 	// Serf configuration
 	flags.IntVar(&config.Serf.Port, "serf-port", 5001, "The port to use for serf transport")
 	flags.StringVar(&config.Serf.EncryptionKeyFile, "serf-encryption-key", "", "The path to the encryption key file used for serf transport")
 
-	// gRPC configuration
-	flags.IntVar(&config.GRPC.Port, "grpc-port", 5002, "The port to use for gRPC transport")
-	flags.StringVar(&config.GRPC.TLSCertFile, "grpc-tls-cert", "", "The location of the TLS cert file for the server to use")
-	flags.StringVar(&config.GRPC.TLSKeyFile, "grpc-tls-key", "", "The location of the TLS key file for the server to use")
-	flags.StringVar(&config.GRPC.TLSCAFile, "grpc-tls-ca", "", "The location of the CA certificate that signs client certificates")
+	// TLS configuration
+	flags.StringVar(&config.TLS.CertFile, "tls-cert", "", "The location of the TLS cert file for the server to use")
+	flags.StringVar(&config.TLS.KeyFile, "tls-key", "", "The location of the TLS key file for the server to use")
+	flags.StringVar(&config.TLS.CAFile, "tls-ca", "", "The location of the CA certificate that signs client certificates")
 
 	// Prometheus configuration
-	flags.IntVar(&config.Metrics.Port, "metrics-port", 5003, "The port to use for serving metrics")
+	flags.IntVar(&config.Metrics.Port, "metrics-port", 5002, "The port to use for serving metrics")
 
 	return cmd
 }

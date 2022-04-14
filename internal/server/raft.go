@@ -3,20 +3,29 @@ package server
 import (
 	"compress/gzip"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
-	"net"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
 
+	transport "github.com/Jille/raft-grpc-transport"
+	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb/v2"
 	"go.etcd.io/bbolt"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/davidsbond/arrebato/internal/clientinfo"
 	"github.com/davidsbond/arrebato/internal/command"
 	aclcmd "github.com/davidsbond/arrebato/internal/proto/arrebato/acl/command/v1"
 	consumercmd "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/command/v1"
@@ -29,14 +38,8 @@ type (
 	// The RaftConfig type describes configuration values for the raft consensus algorithm used to maintain state
 	// across the cluster.
 	RaftConfig struct {
-		// Port is the port to use for raft transport.
-		Port int
-
 		// Timeout is the timeout to use for raft communications.
 		Timeout time.Duration
-
-		// MaxPool is the maximum number of connections in the TCP pool.
-		MaxPool int
 
 		// MaxSnapshots is the maximum number of raft snapshots to keep.
 		MaxSnapshots int
@@ -51,38 +54,51 @@ const (
 	raftLogCacheSize = 512
 )
 
-func setupRaft(config Config, fsm raft.FSM, logger hclog.Logger) (*raft.Raft, *raftboltdb.BoltStore, error) {
+func setupRaft(config Config, fsm raft.FSM, logger hclog.Logger) (*raft.Raft, *raftboltdb.BoltStore, *transport.Manager, error) {
 	if err := os.MkdirAll(config.DataPath, 0o750); err != nil {
-		return nil, nil, fmt.Errorf("failed to create raft data dir: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to create raft data dir: %w", err)
 	}
 
-	raftAddress := fmt.Sprint(config.BindAddress, ":", config.Raft.Port)
-	addrs, err := net.LookupIP(config.AdvertiseAddress)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to look up ip for advertise address: %w", err)
+	raftAddress := fmt.Sprint(config.BindAddress, ":", config.GRPC.Port)
+	options := []grpc.DialOption{
+		grpc.WithChainUnaryInterceptor(
+			grpc_retry.UnaryClientInterceptor(),
+			grpc_prometheus.UnaryClientInterceptor,
+			clientinfo.UnaryClientInterceptor(config.AdvertiseAddress),
+		),
+		grpc.WithChainStreamInterceptor(
+			grpc_retry.StreamClientInterceptor(),
+			grpc_prometheus.StreamClientInterceptor,
+			clientinfo.StreamClientInterceptor(config.AdvertiseAddress),
+		),
 	}
 
-	var advertiseAddress net.TCPAddr
-	for _, addr := range addrs {
-		if addr.IsLoopback() || addr.To4() == nil {
-			continue
+	if config.TLS.enabled() {
+		ca, err := ioutil.ReadFile(config.TLS.CAFile)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to read CA file: %w", err)
 		}
 
-		advertiseAddress.IP = addr
-		advertiseAddress.Port = config.Raft.Port
-		break
+		certPool := x509.NewCertPool()
+		certPool.AppendCertsFromPEM(ca)
+
+		cert, err := tls.LoadX509KeyPair(config.TLS.CertFile, config.TLS.KeyFile)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to load TLS files: %w", err)
+		}
+
+		options = append(options, grpc.WithTransportCredentials(
+			credentials.NewTLS(&tls.Config{
+				Certificates: []tls.Certificate{cert},
+				RootCAs:      certPool,
+				MinVersion:   tls.VersionTLS13,
+			})),
+		)
+	} else {
+		options = append(options, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
-	transport, err := raft.NewTCPTransportWithLogger(
-		raftAddress,
-		&advertiseAddress,
-		config.Raft.MaxPool,
-		config.Raft.Timeout,
-		logger)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create TCP transport: %w", err)
-	}
-
+	raftTransport := transport.New(raft.ServerAddress(raftAddress), options)
 	raftConfig := raft.DefaultConfig()
 	raftConfig.Logger = logger
 	raftConfig.LocalID = raft.ServerID(config.AdvertiseAddress)
@@ -90,23 +106,23 @@ func setupRaft(config Config, fsm raft.FSM, logger hclog.Logger) (*raft.Raft, *r
 	dataPath := filepath.Join(config.DataPath, "raft.db")
 	db, err := raftboltdb.NewBoltStore(dataPath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create database: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to create database: %w", err)
 	}
 
 	snapshots, err := raft.NewFileSnapshotStoreWithLogger(config.DataPath, config.Raft.MaxSnapshots, logger)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create snapshot store: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to create snapshot store: %w", err)
 	}
 
 	// We wrap the log store with a cache to increase performance accessing recent logs.
 	logs, err := raft.NewLogCache(raftLogCacheSize, db)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create log cache: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to create log cache: %w", err)
 	}
 
-	r, err := raft.NewRaft(raftConfig, fsm, logs, db, snapshots, transport)
+	r, err := raft.NewRaft(raftConfig, fsm, logs, db, snapshots, raftTransport.Transport())
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	suffrage := raft.Voter
@@ -129,7 +145,7 @@ func setupRaft(config Config, fsm raft.FSM, logger hclog.Logger) (*raft.Raft, *r
 			continue
 		}
 
-		peerAddress := fmt.Sprint(peer, ":", config.Raft.Port)
+		peerAddress := fmt.Sprint(peer, ":", config.GRPC.Port)
 		bootstrap.Servers = append(bootstrap.Servers, raft.Server{
 			Suffrage: raft.Voter,
 			ID:       raft.ServerID(peer),
@@ -139,7 +155,7 @@ func setupRaft(config Config, fsm raft.FSM, logger hclog.Logger) (*raft.Raft, *r
 
 	if ok, _ := raft.HasExistingState(db, db, snapshots); ok {
 		logger.Debug("found existing raft state")
-		return r, db, nil
+		return r, db, raftTransport, nil
 	}
 
 	logger.Debug("bootstrapping cluster")
@@ -149,10 +165,10 @@ func setupRaft(config Config, fsm raft.FSM, logger hclog.Logger) (*raft.Raft, *r
 		// We get this error if a raft state already exists in the data path, this usually means that this node
 		break
 	case err != nil:
-		return nil, nil, fmt.Errorf("failed to bootstrap: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to bootstrap: %w", err)
 	}
 
-	return r, db, nil
+	return r, db, raftTransport, nil
 }
 
 // Snapshot returns a raft.FSMSnapshot implementation that backs up the current state of the applied raft log. It

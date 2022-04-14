@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
+	transport "github.com/Jille/raft-grpc-transport"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/raft"
@@ -33,15 +34,20 @@ import (
 type (
 	// The Server type represents the entire arrebato node and stitches together the serf, raft & grpc configuration.
 	Server struct {
-		config     Config
-		logger     hclog.Logger
-		raft       *raft.Raft
-		raftStore  *raftboltdb.BoltStore
+		config  Config
+		logger  hclog.Logger
+		store   *bbolt.DB
+		restore chan struct{}
+		pruner  *prune.Pruner
+
+		// Dependencies for Serf
 		serf       *serf.Serf
 		serfEvents <-chan serf.Event
-		store      *bbolt.DB
-		restore    chan struct{}
-		pruner     *prune.Pruner
+
+		// Dependencies for Raft
+		raft          *raft.Raft
+		raftStore     *raftboltdb.BoltStore
+		raftTransport *transport.Manager
 
 		// Dependencies for ACLs
 		aclStore   *acl.BoltStore
@@ -96,7 +102,20 @@ type (
 		Raft    RaftConfig
 		Serf    SerfConfig
 		GRPC    GRPCConfig
+		TLS     TLSConfig
 		Metrics MetricConfig
+	}
+
+	// The TLSConfig type contains configuration values for TLS between the server nodes and clients.
+	TLSConfig struct {
+		// Location of the TLS certificate file to use for transport credentials.
+		CertFile string
+
+		// Location of the TLS Key file to use for transport credentials.
+		KeyFile string
+
+		// The certificate of the CA that signs client certificates.
+		CAFile string
 	}
 )
 
@@ -134,7 +153,7 @@ func New(config Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to setup serf: %w", err)
 	}
 
-	server.raft, server.raftStore, err = setupRaft(config, server, server.logger)
+	server.raft, server.raftStore, server.raftTransport, err = setupRaft(config, server, server.logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup raft: %w", err)
 	}

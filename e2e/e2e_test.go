@@ -33,19 +33,17 @@ func (s *Suite) SetupSuite() {
 		DataPath:      tmp,
 		PruneInterval: time.Minute,
 		Raft: server.RaftConfig{
-			Port:         5000,
 			Timeout:      time.Minute,
-			MaxPool:      3,
 			MaxSnapshots: 3,
 		},
 		Serf: server.SerfConfig{
 			Port: 5001,
 		},
 		GRPC: server.GRPCConfig{
-			Port: 5002,
+			Port: 5000,
 		},
 		Metrics: server.MetricConfig{
-			Port: 5003,
+			Port: 5002,
 		},
 	}
 
@@ -67,7 +65,7 @@ func (s *Suite) SetupSuite() {
 	s.cancel = cancel
 	s.client, err = arrebato.Dial(ctx, arrebato.Config{
 		Addresses: []string{
-			":5002",
+			":5000",
 		},
 		ClientID: "test-client",
 	})

@@ -51,12 +51,10 @@ spec:
               memory: 1Gi
           ports:
             - containerPort: 5000
-              name: raft
+              name: grpc
             - containerPort: 5001
               name: serf
             - containerPort: 5002
-              name: grpc
-            - containerPort: 5003
               name: metrics
           env:
             - name: POD_NAME

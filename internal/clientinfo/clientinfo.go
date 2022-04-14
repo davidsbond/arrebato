@@ -126,3 +126,27 @@ func MetadataExtractor(ctx context.Context) (ClientInfo, error) {
 		ID: strings.Join(values, ""),
 	}, nil
 }
+
+// UnaryClientInterceptor returns a grpc.UnaryClientInterceptor implementation that appends the client identifier to
+// outgoing gRPC metadata under the X-Client-ID key.
+func UnaryClientInterceptor(clientID string) grpc.UnaryClientInterceptor {
+	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+		if clientID != "" {
+			ctx = metadata.AppendToOutgoingContext(ctx, "X-Client-ID", clientID)
+		}
+
+		return invoker(ctx, method, req, reply, cc, opts...)
+	}
+}
+
+// StreamClientInterceptor returns a grpc.StreamClientInterceptor implementation that appends the client identifier to
+// outgoing gRPC metadata under the X-Client-ID key.
+func StreamClientInterceptor(clientID string) grpc.StreamClientInterceptor {
+	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+		if clientID != "" {
+			ctx = metadata.AppendToOutgoingContext(ctx, "X-Client-ID", clientID)
+		}
+
+		return streamer(ctx, desc, cc, method, opts...)
+	}
+}
