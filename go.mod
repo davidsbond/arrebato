@@ -14,7 +14,7 @@ require (
 	github.com/hashicorp/go-hclog v1.2.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/memberlist v0.3.1
-	github.com/hashicorp/raft v1.3.6
+	github.com/hashicorp/raft v1.3.7
 	github.com/hashicorp/raft-boltdb/v2 v2.2.2
 	github.com/hashicorp/serf v0.9.7
 	github.com/instrumenta/kubeval v0.16.1
