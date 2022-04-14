@@ -8,14 +8,10 @@ spec:
     app: arrebato
   ports:
     - port: 5000
-      targetPort: raft
+      targetPort: grpc
       protocol: TCP
-      name: raft
+      name: grpc
     - port: 5001
       targetPort: serf
       protocol: TCP
       name: serf
-    - port: 5002
-      targetPort: grpc
-      protocol: TCP
-      name: grpc

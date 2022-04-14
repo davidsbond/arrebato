@@ -3,6 +3,7 @@ module github.com/davidsbond/arrebato
 go 1.18
 
 require (
+	github.com/Jille/raft-grpc-transport v1.2.0
 	github.com/anchore/syft v0.44.0
 	github.com/armon/go-metrics v0.3.10
 	github.com/bufbuild/buf v1.3.1
@@ -260,7 +261,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
-	github.com/hashicorp/go-msgpack v0.5.5 // indirect
+	github.com/hashicorp/go-msgpack v1.1.5 // indirect
 	github.com/hashicorp/go-plugin v1.4.3 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.0 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect

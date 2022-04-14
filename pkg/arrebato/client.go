@@ -10,7 +10,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/metadata"
+
+	"github.com/davidsbond/arrebato/internal/clientinfo"
 
 	// Enable gzip compression for gRPC clients.
 	_ "google.golang.org/grpc/encoding/gzip"
@@ -55,10 +56,10 @@ func Dial(ctx context.Context, config Config) (*Client, error) {
 			grpc.UseCompressor("gzip"),
 		),
 		grpc.WithChainUnaryInterceptor(
-			unaryClientInterceptor(config.ClientID),
+			clientinfo.UnaryClientInterceptor(config.ClientID),
 		),
 		grpc.WithChainStreamInterceptor(
-			streamClientInterceptor(config.ClientID),
+			clientinfo.StreamClientInterceptor(config.ClientID),
 		),
 	}
 
@@ -89,24 +90,4 @@ func Dial(ctx context.Context, config Config) (*Client, error) {
 // Close the connection to the cluster.
 func (c *Client) Close() error {
 	return c.cluster.Close()
-}
-
-func unaryClientInterceptor(clientID string) grpc.UnaryClientInterceptor {
-	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-		if clientID != "" {
-			ctx = metadata.AppendToOutgoingContext(ctx, "X-Client-ID", clientID)
-		}
-
-		return invoker(ctx, method, req, reply, cc, opts...)
-	}
-}
-
-func streamClientInterceptor(clientID string) grpc.StreamClientInterceptor {
-	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
-		if clientID != "" {
-			ctx = metadata.AppendToOutgoingContext(ctx, "X-Client-ID", clientID)
-		}
-
-		return streamer(ctx, desc, cc, method, opts...)
-	}
 }

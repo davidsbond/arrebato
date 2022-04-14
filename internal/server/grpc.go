@@ -27,20 +27,11 @@ type (
 	GRPCConfig struct {
 		// The Port to use for gRPC transport.
 		Port int
-
-		// Location of the TLS certificate file to use for transport credentials.
-		TLSCertFile string
-
-		// Location of the TLS Key file to use for transport credentials.
-		TLSKeyFile string
-
-		// The certificate of the CA that signs client certificates.
-		TLSCAFile string
 	}
 )
 
-func (c GRPCConfig) tlsEnabled() bool {
-	return c.TLSCertFile != "" && c.TLSKeyFile != ""
+func (c TLSConfig) enabled() bool {
+	return c.CertFile != "" && c.KeyFile != ""
 }
 
 func (svr *Server) serveGRPC(ctx context.Context) error {
@@ -51,8 +42,8 @@ func (svr *Server) serveGRPC(ctx context.Context) error {
 	var options []grpc.ServerOption
 	infoExtractor := clientinfo.MetadataExtractor
 
-	if svr.config.GRPC.tlsEnabled() {
-		ca, err := ioutil.ReadFile(svr.config.GRPC.TLSCAFile)
+	if svr.config.TLS.enabled() {
+		ca, err := ioutil.ReadFile(svr.config.TLS.CAFile)
 		if err != nil {
 			return fmt.Errorf("failed to read CA file: %w", err)
 		}
@@ -60,7 +51,7 @@ func (svr *Server) serveGRPC(ctx context.Context) error {
 		certPool := x509.NewCertPool()
 		certPool.AppendCertsFromPEM(ca)
 
-		cert, err := tls.LoadX509KeyPair(svr.config.GRPC.TLSCertFile, svr.config.GRPC.TLSKeyFile)
+		cert, err := tls.LoadX509KeyPair(svr.config.TLS.CertFile, svr.config.TLS.KeyFile)
 		if err != nil {
 			return fmt.Errorf("failed to load TLS files: %w", err)
 		}
@@ -100,6 +91,7 @@ func (svr *Server) serveGRPC(ctx context.Context) error {
 	svr.aclGRPC.Register(server, healthServer)
 	svr.nodeGRPC.Register(server, healthServer)
 	svr.signingGRPC.Register(server, healthServer)
+	svr.raftTransport.Register(server)
 
 	// Part of the gRPC health checking protocol states that the server should use an empty string as the key for
 	// the server's overall health status.

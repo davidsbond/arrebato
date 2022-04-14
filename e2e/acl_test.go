@@ -55,7 +55,7 @@ func (s *ACLSuite) TestACLRulesApply() {
 	})
 
 	s.Run("As a different client, the ACL should not let us produce messages", func() {
-		client, err := arrebato.Dial(ctx, arrebato.DefaultConfig([]string{":5002"}))
+		client, err := arrebato.Dial(ctx, arrebato.DefaultConfig([]string{":5000"}))
 		require.NoError(s.T(), err)
 
 		producer := client.NewProducer(arrebato.ProducerConfig{
