@@ -1,4 +1,9 @@
 name: distroless
+
+permissions:
+  contents: write
+  pull-requests: write
+
 on:
   workflow_dispatch: {}
   schedule:
@@ -15,13 +20,15 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v4
         with:
-          title: Update Distroless base image
+          title: Update distroless base image
           branch: update-distroless
           committer: GitHub <noreply@github.com>
           author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
           delete-branch: true
           base: master
           commit-message: |
+            Update distroless base image
+            
             This commit updates the gcr.io/distroless/static digest to the latest known version
           body: |
             This commit updates the gcr.io/distroless/static digest to the latest known version
