@@ -88,3 +88,6 @@ generate-serf-key:
 
 kubeval: kustomize
 	kubeval install.yaml
+
+update-distroless:
+	./scripts/update_distroless.sh
