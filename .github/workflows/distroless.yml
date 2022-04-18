@@ -16,6 +16,11 @@ jobs:
         uses: peter-evans/create-pull-request@v4
         with:
           title: Update Distroless base image
+          branch: update-distroless
+          committer: GitHub <noreply@github.com>
+          author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
+          delete-branch: true
+          base: master
           commit-message: |
             This commit updates the gcr.io/distroless/static digest to the latest known version
           body: |
