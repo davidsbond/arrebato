@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/Jille/raft-grpc-transport v1.2.0
-	github.com/anchore/syft v0.44.0
+	github.com/anchore/syft v0.44.1
 	github.com/armon/go-metrics v0.3.10
 	github.com/bufbuild/buf v1.3.1
 	github.com/golangci/golangci-lint v1.45.2
