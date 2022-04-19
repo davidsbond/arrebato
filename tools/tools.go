@@ -6,6 +6,7 @@ import (
 	_ "github.com/anchore/syft"
 	_ "github.com/bufbuild/buf/cmd/buf"
 	_ "github.com/golangci/golangci-lint/cmd/golangci-lint"
+	_ "github.com/google/go-licenses"
 	_ "github.com/goreleaser/goreleaser"
 	_ "github.com/instrumenta/kubeval"
 	_ "go.etcd.io/bbolt/cmd/bbolt"
