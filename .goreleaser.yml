@@ -2,6 +2,7 @@ project_name: "arrebato"
 before:
   hooks:
     - make kustomize
+    - make update-licenses
 
 builds:
   - env:
@@ -29,6 +30,9 @@ dockers:
       - "ghcr.io/davidsbond/arrebato:{{ .Tag }}-amd64"
     dockerfile: Dockerfile
     use: buildx
+    extra_files:
+      - LICENSE
+      - licenses
     build_flag_templates:
       - "--pull"
       - "--label=org.opencontainers.image.created={{ .Date }}"
@@ -38,7 +42,7 @@ dockers:
       - "--label=org.opencontainers.image.documentation=https://github.com/davidsbond/arrebato"
       - "--label=org.opencontainers.image.source=git@github.com:davidsbond/arrebato.git"
       - "--label=org.opencontainers.image.licenses=Apache-2.0"
-      - "--label=org.opencontainers.image.base.digest=fac888659ca3eb59f7d5dcb0d62540cc5c53615e2671062b36c815d000da8ef4"
+      - "--label=org.opencontainers.image.base.digest=d6fa9db9548b5772860fecddb11d84f9ebd7e0321c0cb3c02870402680cc315f"
       - "--label=org.opencontainers.image.base.name=gcr.io/distroless/static"
       - "--platform=linux/amd64"
 
@@ -49,6 +53,9 @@ dockers:
       - "ghcr.io/davidsbond/arrebato:{{ .Tag }}-arm64"
     dockerfile: Dockerfile
     use: buildx
+    extra_files:
+      - LICENSE
+      - licenses
     build_flag_templates:
       - "--pull"
       - "--label=org.opencontainers.image.created={{ .Date }}"
@@ -58,7 +65,7 @@ dockers:
       - "--label=org.opencontainers.image.documentation=https://github.com/davidsbond/arrebato"
       - "--label=org.opencontainers.image.source=git@github.com:davidsbond/arrebato.git"
       - "--label=org.opencontainers.image.licenses=Apache-2.0"
-      - "--label=org.opencontainers.image.base.digest=fac888659ca3eb59f7d5dcb0d62540cc5c53615e2671062b36c815d000da8ef4"
+      - "--label=org.opencontainers.image.base.digest=d6fa9db9548b5772860fecddb11d84f9ebd7e0321c0cb3c02870402680cc315f"
       - "--label=org.opencontainers.image.base.name=gcr.io/distroless/static"
       - "--platform=linux/arm64"
 
@@ -83,6 +90,7 @@ archives:
       - LICENSE
       - README.md
       - docs/*
+      - licenses/*
 
 checksum:
   name_template: "{{ .ProjectName }}_{{ .Version }}_SHA256SUMS"

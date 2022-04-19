@@ -39,39 +39,42 @@ snapshot:
 release:
 	goreleaser release --rm-dist
 
-install-tools: install-buf install-kustomize install-protoc-plugins install-golangci-lint install-gofumpt install-bbolt install-syft install-kubeval install-goreleaser
+install-tools: install-buf install-kustomize install-protoc-plugins install-golangci-lint install-gofumpt install-bbolt install-syft install-kubeval install-goreleaser install-go-licenses
 
 kustomize:
 	kustomize build deploy/kustomize -o install.yaml
 
 install-kustomize:
-	go install sigs.k8s.io/kustomize/kustomize/v4
+	cd tools && go install sigs.k8s.io/kustomize/kustomize/v4
 
 install-syft:
-	go install github.com/anchore/syft
+	cd tools && go install github.com/anchore/syft
 
 install-goreleaser:
-	go install github.com/goreleaser/goreleaser
+	cd tools && go install github.com/goreleaser/goreleaser
 
 install-protoc-plugins:
-	go install \
+	cd tools && go install \
 		google.golang.org/grpc/cmd/protoc-gen-go-grpc \
 		google.golang.org/protobuf/cmd/protoc-gen-go
 
 install-buf:
-	go install github.com/bufbuild/buf/cmd/buf
+	cd tools && go install github.com/bufbuild/buf/cmd/buf
 
 install-golangci-lint:
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint
+	cd tools && go install github.com/golangci/golangci-lint/cmd/golangci-lint
 
 install-gofumpt:
-	go install mvdan.cc/gofumpt
+	cd tools && go install mvdan.cc/gofumpt
 
 install-bbolt:
-	go install go.etcd.io/bbolt/cmd/bbolt
+	cd tools && go install go.etcd.io/bbolt/cmd/bbolt
 
 install-kubeval:
-	go install github.com/instrumenta/kubeval
+	cd tools && go install github.com/instrumenta/kubeval
+
+install-go-licenses:
+	cd tools && go install github.com/google/go-licenses
 
 generate-certs:
 	rm *.pem
@@ -91,3 +94,7 @@ kubeval: kustomize
 
 update-distroless:
 	./scripts/update_distroless.sh
+
+update-licenses:
+	go-licenses save . --save_path="./licenses" --force
+	chmod -R 755 ./licenses
