@@ -5,10 +5,13 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"io"
 	"io/ioutil"
 	"os"
+	"sort"
 	"strings"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
 
 	"github.com/davidsbond/arrebato/pkg/arrebato"
@@ -53,6 +56,69 @@ func withClient(fn func(ctx context.Context, client *arrebato.Client, args []str
 			return err
 		}
 
+		defer closeIt(client)
 		return fn(command.Context(), client, args)
+	}
+}
+
+func validTopicNames(command *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	client, err := loadClient(command.Context())
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	defer closeIt(client)
+	topics, err := client.Topics(command.Context())
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	names := make([]string, len(topics))
+	for i, topic := range topics {
+		names[i] = topic.Name
+	}
+
+	sort.Slice(names, func(i, j int) bool {
+		if strings.HasPrefix(names[i], toComplete) {
+			return true
+		}
+
+		return names[i] < names[j]
+	})
+
+	return names, cobra.ShellCompDirectiveNoSpace
+}
+
+func validNodeNames(command *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	client, err := loadClient(command.Context())
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	defer closeIt(client)
+	nodes, err := client.Nodes(command.Context())
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	names := make([]string, len(nodes))
+	for i, node := range nodes {
+		names[i] = node.Name
+	}
+
+	sort.Slice(names, func(i, j int) bool {
+		if strings.HasPrefix(names[i], toComplete) {
+			return true
+		}
+
+		return names[i] < names[j]
+	})
+
+	return names, cobra.ShellCompDirectiveNoSpace
+}
+
+func closeIt(c io.Closer) {
+	if err := c.Close(); err != nil {
+		hclog.Default().Error("failed to close", "error", err)
 	}
 }
