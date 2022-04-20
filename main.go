@@ -18,7 +18,7 @@ func main() {
 		Use:     "arrebato",
 		Version: version,
 		CompletionOptions: cobra.CompletionOptions{
-			DisableDefaultCmd: true,
+			HiddenDefaultCmd: true,
 		},
 		Long: "The command-line tool for managing arrebato servers.\n\n" +
 			"Environment variables:\n" +

@@ -31,10 +31,11 @@ func describeTopic() *cobra.Command {
 	var jsonOut bool
 
 	cmd := &cobra.Command{
-		Use:   "topic [flags] <name>",
-		Short: "Describe a topic",
-		Long:  "This command returns information about a single topic",
-		Args:  cobra.ExactValidArgs(1),
+		Use:               "topic [flags] <name>",
+		Short:             "Describe a topic",
+		Long:              "This command returns information about a single topic",
+		Args:              cobra.ExactValidArgs(1),
+		ValidArgsFunction: validTopicNames,
 		RunE: withClient(func(ctx context.Context, client *arrebato.Client, args []string) error {
 			topic, err := client.Topic(ctx, args[0])
 			if err != nil {
@@ -64,10 +65,11 @@ func describeNode() *cobra.Command {
 	var jsonOut bool
 
 	cmd := &cobra.Command{
-		Use:   "node [flags] <name>",
-		Short: "Describe a node",
-		Long:  "This command returns information about a single node in the cluster",
-		Args:  cobra.ExactValidArgs(1),
+		Use:               "node [flags] <name>",
+		Short:             "Describe a node",
+		Long:              "This command returns information about a single node in the cluster",
+		Args:              cobra.ExactValidArgs(1),
+		ValidArgsFunction: validNodeNames,
 		RunE: withClient(func(ctx context.Context, client *arrebato.Client, args []string) error {
 			node, err := client.Node(ctx, args[0])
 			if err != nil {
