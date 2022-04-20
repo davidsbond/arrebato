@@ -21,6 +21,7 @@ func Describe() *cobra.Command {
 
 	cmd.AddCommand(
 		describeTopic(),
+		describeNode(),
 	)
 
 	return cmd
@@ -31,7 +32,7 @@ func describeTopic() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "topic [flags] <name>",
-		Short: "Describe a topics",
+		Short: "Describe a topic",
 		Long:  "This command returns information about a single topic",
 		Args:  cobra.ExactValidArgs(1),
 		RunE: withClient(func(ctx context.Context, client *arrebato.Client, args []string) error {
@@ -55,6 +56,39 @@ func describeTopic() *cobra.Command {
 
 	flags := cmd.PersistentFlags()
 	flags.BoolVar(&jsonOut, "json", false, "Output topic information in JSON format")
+
+	return cmd
+}
+
+func describeNode() *cobra.Command {
+	var jsonOut bool
+
+	cmd := &cobra.Command{
+		Use:   "node [flags] <name>",
+		Short: "Describe a node",
+		Long:  "This command returns information about a single node in the cluster",
+		Args:  cobra.ExactValidArgs(1),
+		RunE: withClient(func(ctx context.Context, client *arrebato.Client, args []string) error {
+			node, err := client.Node(ctx, args[0])
+			if err != nil {
+				return err
+			}
+
+			if jsonOut {
+				return json.NewEncoder(os.Stdout).Encode(node)
+			}
+
+			fmt.Println("Name:", node.Name)
+			fmt.Println("Leader:", node.Leader)
+			fmt.Println("Version:", node.Version)
+			fmt.Println("Peers:", len(node.Peers))
+
+			return nil
+		}),
+	}
+
+	flags := cmd.PersistentFlags()
+	flags.BoolVar(&jsonOut, "json", false, "Output node information in JSON format")
 
 	return cmd
 }

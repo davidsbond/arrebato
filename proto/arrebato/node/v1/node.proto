@@ -13,4 +13,6 @@ message Node {
   repeated string peers = 2;
   // The name of the node
   string name = 3;
+  // The version of the node
+  string version = 4;
 }

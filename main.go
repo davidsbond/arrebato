@@ -11,7 +11,7 @@ import (
 	"github.com/davidsbond/arrebato/cmd"
 )
 
-var version string
+var version = "dev"
 
 func main() {
 	command := &cobra.Command{
@@ -32,7 +32,7 @@ func main() {
 
 	command.SetErr(os.Stderr)
 	command.AddCommand(
-		cmd.Server(),
+		cmd.Server(version),
 		cmd.Create(),
 		cmd.List(),
 		cmd.Describe(),

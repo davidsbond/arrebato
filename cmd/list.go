@@ -23,6 +23,7 @@ func List() *cobra.Command {
 	cmd.AddCommand(
 		listTopics(),
 		listSigningKeys(),
+		listNodes(),
 	)
 
 	return cmd
@@ -88,6 +89,38 @@ func listSigningKeys() *cobra.Command {
 
 	flags := cmd.PersistentFlags()
 	flags.BoolVar(&jsonOut, "json", false, "Output public keys in JSON format")
+
+	return cmd
+}
+
+func listNodes() *cobra.Command {
+	var jsonOut bool
+
+	cmd := &cobra.Command{
+		Use:   "nodes [flags]",
+		Short: "List all nodes in the cluster",
+		Long:  "This command returns a list of all nodes within the arrebato cluster",
+		RunE: withClient(func(ctx context.Context, client *arrebato.Client, args []string) error {
+			nodes, err := client.Nodes(ctx)
+			if err != nil {
+				return err
+			}
+
+			if jsonOut {
+				return json.NewEncoder(os.Stdout).Encode(nodes)
+			}
+
+			builder := table.NewBuilder("NAME", "LEADER", "VERSION")
+			for _, n := range nodes {
+				builder.AddRow(n.Name, n.Leader, n.Version)
+			}
+
+			return builder.Build(ctx, os.Stdout)
+		}),
+	}
+
+	flags := cmd.PersistentFlags()
+	flags.BoolVar(&jsonOut, "json", false, "Output nodes in JSON format")
 
 	return cmd
 }

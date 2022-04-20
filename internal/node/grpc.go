@@ -3,6 +3,7 @@ package node
 
 import (
 	"context"
+	"time"
 
 	"github.com/hashicorp/raft"
 	"google.golang.org/grpc"
@@ -10,6 +11,7 @@ import (
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 
 	nodesvc "github.com/davidsbond/arrebato/internal/proto/arrebato/node/service/v1"
 	"github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
@@ -21,6 +23,7 @@ type (
 	GRPC struct {
 		raft    Raft
 		localID raft.ServerID
+		version string
 	}
 
 	// The Raft interface describes types that can return information regarding the raft state.
@@ -31,8 +34,8 @@ type (
 )
 
 // NewGRPC returns a new instance of the GRPC type that returns node information based on the Raft state.
-func NewGRPC(raft Raft, localID raft.ServerID) *GRPC {
-	return &GRPC{raft: raft, localID: localID}
+func NewGRPC(raft Raft, localID raft.ServerID, version string) *GRPC {
+	return &GRPC{raft: raft, localID: localID, version: version}
 }
 
 // Register the GRPC service onto the grpc.ServiceRegistrar.
@@ -60,9 +63,42 @@ func (svr *GRPC) Describe(_ context.Context, _ *nodesvc.DescribeRequest) (*nodes
 
 	return &nodesvc.DescribeResponse{
 		Node: &node.Node{
-			Name:   string(svr.localID),
-			Leader: svr.raft.State() == raft.Leader,
-			Peers:  peers,
+			Name:    string(svr.localID),
+			Leader:  svr.raft.State() == raft.Leader,
+			Peers:   peers,
+			Version: svr.version,
 		},
 	}, nil
+}
+
+// Watch the node state, writing data to the server stream when the leadership or known peers changes.
+func (svr *GRPC) Watch(_ *nodesvc.WatchRequest, server nodesvc.NodeService_WatchServer) error {
+	ctx := server.Context()
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	var lastState *node.Node
+	for {
+		select {
+		case <-ctx.Done():
+			return status.FromContextError(ctx.Err()).Err()
+		case <-ticker.C:
+			resp, err := svr.Describe(ctx, &nodesvc.DescribeRequest{})
+			if err != nil {
+				return err
+			}
+
+			state := resp.GetNode()
+			if proto.Equal(lastState, state) {
+				continue
+			}
+
+			if err = server.Send(&nodesvc.WatchResponse{Node: state}); err != nil {
+				return err
+			}
+
+			lastState = state
+		}
+	}
 }
