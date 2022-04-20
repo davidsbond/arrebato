@@ -11,30 +11,39 @@ import (
 )
 
 type cluster struct {
-	mux         *sync.RWMutex
-	leaderNode  *grpc.ClientConn
-	connections []*grpc.ClientConn
-	idx         int
+	mux        *sync.RWMutex
+	leaderNode *grpc.ClientConn
+	nodes      map[string]*grpc.ClientConn
 }
 
-func newCluster(ctx context.Context, connections []*grpc.ClientConn) *cluster {
-	cl := &cluster{connections: connections, mux: &sync.RWMutex{}}
+func newCluster(ctx context.Context, connections []*grpc.ClientConn) (*cluster, error) {
+	nodes := make(map[string]*grpc.ClientConn)
+	for _, connection := range connections {
+		resp, err := nodesvc.NewNodeServiceClient(connection).Describe(ctx, &nodesvc.DescribeRequest{})
+		if err != nil {
+			return nil, err
+		}
+
+		nodes[resp.GetNode().GetName()] = connection
+	}
+
+	cl := &cluster{nodes: nodes, mux: &sync.RWMutex{}}
 	cl.findLeader(ctx)
 
-	return cl
+	return cl, nil
 }
 
 func (c *cluster) any() *grpc.ClientConn {
-	c.mux.Lock()
-	defer c.mux.Unlock()
+	c.mux.RLock()
+	defer c.mux.RUnlock()
 
-	conn := c.connections[c.idx]
-	c.idx++
-	if c.idx > len(c.connections)-1 {
-		c.idx = 0
+	// Map ordering is non-deterministic, we can just pick the first one we get
+	// in the range.
+	for _, conn := range c.nodes {
+		return conn
 	}
 
-	return conn
+	return nil
 }
 
 func (c *cluster) leader() *grpc.ClientConn {
@@ -43,25 +52,49 @@ func (c *cluster) leader() *grpc.ClientConn {
 	return c.leaderNode
 }
 
+func (c *cluster) named(name string) (*grpc.ClientConn, bool) {
+	c.mux.RLock()
+	defer c.mux.RUnlock()
+
+	conn, ok := c.nodes[name]
+	return conn, ok
+}
+
 func (c *cluster) findLeader(ctx context.Context) {
-	for _, connection := range c.connections {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	for _, connection := range c.nodes {
 		resp, err := nodesvc.NewNodeServiceClient(connection).Describe(ctx, &nodesvc.DescribeRequest{})
 		if err != nil {
 			continue
 		}
 
 		if resp.GetNode().GetLeader() {
-			c.mux.Lock()
 			c.leaderNode = connection
-			c.mux.Unlock()
 			return
 		}
 	}
 }
 
+func (c *cluster) forEach(ctx context.Context, fn func(conn *grpc.ClientConn) error) error {
+	c.mux.RLock()
+	defer c.mux.RUnlock()
+	for _, connection := range c.nodes {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
+		if err := fn(connection); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (c *cluster) Close() error {
 	errs := make([]error, 0)
-	for _, connection := range c.connections {
+	for _, connection := range c.nodes {
 		if err := connection.Close(); err != nil {
 			errs = append(errs, err)
 		}

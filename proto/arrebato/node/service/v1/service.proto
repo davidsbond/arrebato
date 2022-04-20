@@ -12,6 +12,9 @@ option go_package = "github.com/davidsbond/arrebato/internal/proto/arrebato/node
 service NodeService {
   // Describe the Node.
   rpc Describe(DescribeRequest) returns (DescribeResponse);
+  // Watch for changes to the node, including leadership status and new peers. Updates are written to the returned
+  // stream.
+  rpc Watch(WatchRequest) returns (stream WatchResponse);
 }
 
 // The DescribeRequest message is the request DTO when calling NodeService.Describe.
@@ -20,5 +23,14 @@ message DescribeRequest {}
 // The DescribeResponse message is the response DTO when calling NodeService.Describe. It contains node details.
 message DescribeResponse {
   // Information about the queried node.
+  arrebato.node.v1.Node node = 1;
+}
+
+// The WatchRequest message is the request DTO when calling NodeService.Watch.
+message WatchRequest {}
+
+// The WatchResponse message is the response DTO when calling NodeService.Watch. It contains node details.
+message WatchResponse {
+  // Information about the watched node.
   arrebato.node.v1.Node node = 1;
 }

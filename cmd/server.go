@@ -11,8 +11,10 @@ import (
 )
 
 // Server returns a cobra.Command that can be used to start an arrebato server instance.
-func Server() *cobra.Command {
-	var config server.Config
+func Server(version string) *cobra.Command {
+	config := server.Config{
+		Version: version,
+	}
 
 	cmd := &cobra.Command{
 		Use:   "server",

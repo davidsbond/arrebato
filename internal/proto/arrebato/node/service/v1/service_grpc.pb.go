@@ -24,6 +24,9 @@ const _ = grpc.SupportPackageIsVersion7
 type NodeServiceClient interface {
 	// Describe the Node.
 	Describe(ctx context.Context, in *DescribeRequest, opts ...grpc.CallOption) (*DescribeResponse, error)
+	// Watch for changes to the node, including leadership status and new peers. Updates are written to the returned
+	// stream.
+	Watch(ctx context.Context, in *WatchRequest, opts ...grpc.CallOption) (NodeService_WatchClient, error)
 }
 
 type nodeServiceClient struct {
@@ -43,12 +46,47 @@ func (c *nodeServiceClient) Describe(ctx context.Context, in *DescribeRequest, o
 	return out, nil
 }
 
+func (c *nodeServiceClient) Watch(ctx context.Context, in *WatchRequest, opts ...grpc.CallOption) (NodeService_WatchClient, error) {
+	stream, err := c.cc.NewStream(ctx, &NodeService_ServiceDesc.Streams[0], "/arrebato.node.service.v1.NodeService/Watch", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &nodeServiceWatchClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type NodeService_WatchClient interface {
+	Recv() (*WatchResponse, error)
+	grpc.ClientStream
+}
+
+type nodeServiceWatchClient struct {
+	grpc.ClientStream
+}
+
+func (x *nodeServiceWatchClient) Recv() (*WatchResponse, error) {
+	m := new(WatchResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // NodeServiceServer is the server API for NodeService service.
 // All implementations should embed UnimplementedNodeServiceServer
 // for forward compatibility
 type NodeServiceServer interface {
 	// Describe the Node.
 	Describe(context.Context, *DescribeRequest) (*DescribeResponse, error)
+	// Watch for changes to the node, including leadership status and new peers. Updates are written to the returned
+	// stream.
+	Watch(*WatchRequest, NodeService_WatchServer) error
 }
 
 // UnimplementedNodeServiceServer should be embedded to have forward compatible implementations.
@@ -57,6 +95,9 @@ type UnimplementedNodeServiceServer struct {
 
 func (UnimplementedNodeServiceServer) Describe(context.Context, *DescribeRequest) (*DescribeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Describe not implemented")
+}
+func (UnimplementedNodeServiceServer) Watch(*WatchRequest, NodeService_WatchServer) error {
+	return status.Errorf(codes.Unimplemented, "method Watch not implemented")
 }
 
 // UnsafeNodeServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -88,6 +129,27 @@ func _NodeService_Describe_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NodeService_Watch_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(WatchRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(NodeServiceServer).Watch(m, &nodeServiceWatchServer{stream})
+}
+
+type NodeService_WatchServer interface {
+	Send(*WatchResponse) error
+	grpc.ServerStream
+}
+
+type nodeServiceWatchServer struct {
+	grpc.ServerStream
+}
+
+func (x *nodeServiceWatchServer) Send(m *WatchResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // NodeService_ServiceDesc is the grpc.ServiceDesc for NodeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -100,6 +162,12 @@ var NodeService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _NodeService_Describe_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Watch",
+			Handler:       _NodeService_Watch_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "arrebato/node/service/v1/service.proto",
 }

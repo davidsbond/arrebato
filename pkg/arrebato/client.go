@@ -79,7 +79,10 @@ func Dial(ctx context.Context, config Config) (*Client, error) {
 		connections[i] = conn
 	}
 
-	cl := newCluster(ctx, connections)
+	cl, err := newCluster(ctx, connections)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Client{
 		cluster: cl,

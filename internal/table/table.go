@@ -68,10 +68,6 @@ func (b *Builder) Build(ctx context.Context, output io.Writer) error {
 		if _, err := writer.Write([]byte{'\n'}); err != nil {
 			return err
 		}
-
-		if err := writer.Flush(); err != nil {
-			return err
-		}
 	}
 
 	return writer.Flush()

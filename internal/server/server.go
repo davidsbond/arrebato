@@ -80,6 +80,9 @@ type (
 
 	// The Config type contains configuration values for the Server.
 	Config struct {
+		// The server version
+		Version string
+
 		// LogLevel denotes the verbosity of logs.
 		LogLevel int
 
@@ -166,7 +169,7 @@ func New(config Config) (*Server, error) {
 	executor := command.NewExecutor(server.raft, config.Raft.Timeout)
 
 	// Node stack
-	server.nodeGRPC = node.NewGRPC(server.raft, raft.ServerID(config.AdvertiseAddress))
+	server.nodeGRPC = node.NewGRPC(server.raft, raft.ServerID(config.AdvertiseAddress), config.Version)
 
 	// ACL stack
 	server.aclStore = acl.NewBoltStore(server.store)
