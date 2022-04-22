@@ -22,6 +22,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/davidsbond/arrebato/internal/acl"
+	"github.com/davidsbond/arrebato/internal/backup"
 	"github.com/davidsbond/arrebato/internal/command"
 	"github.com/davidsbond/arrebato/internal/consumer"
 	"github.com/davidsbond/arrebato/internal/message"
@@ -169,7 +170,11 @@ func New(config Config) (*Server, error) {
 	executor := command.NewExecutor(server.raft, config.Raft.Timeout)
 
 	// Node stack
-	server.nodeGRPC = node.NewGRPC(server.raft, raft.ServerID(config.AdvertiseAddress), config.Version)
+	info := node.Info{
+		LocalID: raft.ServerID(config.AdvertiseAddress),
+		Version: config.Version,
+	}
+	server.nodeGRPC = node.NewGRPC(server.raft, info, backup.NewBoltDB(server.store))
 
 	// ACL stack
 	server.aclStore = acl.NewBoltStore(server.store)

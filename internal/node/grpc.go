@@ -3,6 +3,7 @@ package node
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"github.com/hashicorp/raft"
@@ -23,6 +24,7 @@ type (
 	GRPC struct {
 		raft    Raft
 		localID raft.ServerID
+		backup  io.WriterTo
 		version string
 	}
 
@@ -31,11 +33,17 @@ type (
 		State() raft.RaftState
 		GetConfiguration() raft.ConfigurationFuture
 	}
+
+	// The Info type contains node information served from the gRPC service.
+	Info struct {
+		LocalID raft.ServerID
+		Version string
+	}
 )
 
 // NewGRPC returns a new instance of the GRPC type that returns node information based on the Raft state.
-func NewGRPC(raft Raft, localID raft.ServerID, version string) *GRPC {
-	return &GRPC{raft: raft, localID: localID, version: version}
+func NewGRPC(raft Raft, info Info, backup io.WriterTo) *GRPC {
+	return &GRPC{raft: raft, localID: info.LocalID, version: info.Version, backup: backup}
 }
 
 // Register the GRPC service onto the grpc.ServiceRegistrar.
@@ -101,4 +109,27 @@ func (svr *GRPC) Watch(_ *nodesvc.WatchRequest, server nodesvc.NodeService_Watch
 			lastState = state
 		}
 	}
+}
+
+type (
+	backupWriter struct {
+		stream nodesvc.NodeService_BackupServer
+	}
+)
+
+func (bw *backupWriter) Write(p []byte) (int, error) {
+	err := bw.stream.Send(&nodesvc.BackupResponse{
+		Data: p,
+	})
+
+	return len(p), err
+}
+
+// Backup the server state, writing it to the outbound stream.
+func (svr *GRPC) Backup(_ *nodesvc.BackupRequest, stream nodesvc.NodeService_BackupServer) error {
+	if _, err := svr.backup.WriteTo(&backupWriter{stream: stream}); err != nil {
+		return status.Errorf(codes.Internal, "failed to perform backup: %v", err)
+	}
+
+	return nil
 }
