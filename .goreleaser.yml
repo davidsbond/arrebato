@@ -14,13 +14,18 @@ builds:
       - "-s -w -X main.version={{ .Version }}"
     goos:
       - linux
+      - windows
+      - darwin
+      - freebsd
     goarch:
       - amd64
       - arm64
+      - arm
+      - "386"
+    ignore:
+      - goos: darwin
+        goarch: "386"
     binary: "{{ .ProjectName }}"
-    hooks:
-      post:
-        - upx -qq {{ .Path }}
 
 dockers:
   - id: linux_amd64
