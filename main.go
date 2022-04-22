@@ -36,6 +36,7 @@ func main() {
 		cmd.Create(),
 		cmd.List(),
 		cmd.Describe(),
+		cmd.Backup(),
 	)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)

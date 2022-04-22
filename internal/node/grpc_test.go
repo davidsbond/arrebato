@@ -50,8 +50,12 @@ func TestGRPC_Describe(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			ctx := testutil.Context(t)
 			r := &MockRaft{state: tc.State, config: tc.Config}
-			localID := raft.ServerID("test-server")
-			actual, err := node.NewGRPC(r, localID, "v1.0.0").Describe(ctx, &nodesvc.DescribeRequest{})
+			info := node.Info{
+				LocalID: raft.ServerID("test-server"),
+				Version: "v1.0.0",
+			}
+
+			actual, err := node.NewGRPC(r, info, nil).Describe(ctx, &nodesvc.DescribeRequest{})
 			assert.NoError(t, err)
 			assert.True(t, proto.Equal(tc.Expected, actual))
 		})

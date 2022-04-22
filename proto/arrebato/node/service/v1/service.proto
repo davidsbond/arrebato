@@ -15,6 +15,8 @@ service NodeService {
   // Watch for changes to the node, including leadership status and new peers. Updates are written to the returned
   // stream.
   rpc Watch(WatchRequest) returns (stream WatchResponse);
+  // Backup the node state, streaming the byte contents back to the client.
+  rpc Backup(BackupRequest) returns (stream BackupResponse);
 }
 
 // The DescribeRequest message is the request DTO when calling NodeService.Describe.
@@ -33,4 +35,13 @@ message WatchRequest {}
 message WatchResponse {
   // Information about the watched node.
   arrebato.node.v1.Node node = 1;
+}
+
+// The BackupRequest message is the request DTO when calling NodeService.Backup.
+message BackupRequest {}
+
+// The BackupResponse message is the response DTO when calling NodeService.Backup. It contains some of the byte
+// content of the backup.
+message BackupResponse {
+  bytes data = 1;
 }
