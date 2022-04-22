@@ -6,7 +6,7 @@ require (
 	github.com/anchore/syft v0.44.1
 	github.com/bufbuild/buf v1.4.0
 	github.com/golangci/golangci-lint v1.45.2
-	github.com/google/go-licenses v1.1.1
+	github.com/google/go-licenses v1.2.0
 	github.com/goreleaser/goreleaser v1.8.3
 	github.com/instrumenta/kubeval v0.16.1
 	go.etcd.io/bbolt v1.3.6
