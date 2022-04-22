@@ -3,15 +3,15 @@ on:
   push:
     paths:
       - '**.go'
-      - 'go.mod'
-      - 'go.sum'
+      - '**.mod'
+      - '**.sum'
     branches:
       - master
   pull_request:
     paths:
       - '**.go'
-      - 'go.mod'
-      - 'go.sum'
+      - '**.mod'
+      - '**.sum'
 
 jobs:
   test:
