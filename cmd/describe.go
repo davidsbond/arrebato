@@ -22,6 +22,7 @@ func Describe() *cobra.Command {
 	cmd.AddCommand(
 		describeTopic(),
 		describeNode(),
+		describeACL(),
 	)
 
 	return cmd
@@ -93,4 +94,20 @@ func describeNode() *cobra.Command {
 	flags.BoolVar(&jsonOut, "json", false, "Output node information in JSON format")
 
 	return cmd
+}
+
+func describeACL() *cobra.Command {
+	return &cobra.Command{
+		Use:   "acl [flags]",
+		Short: "Output the server's ACL",
+		Long:  "This command outputs the JSON-encoded server ACL.",
+		RunE: withClient(func(ctx context.Context, client *arrebato.Client, args []string) error {
+			acl, err := client.ACL(ctx)
+			if err != nil {
+				return err
+			}
+
+			return json.NewEncoder(os.Stdout).Encode(acl)
+		}),
+	}
 }
