@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/Jille/raft-grpc-transport v1.2.0
-	github.com/armon/go-metrics v0.3.10
+	github.com/armon/go-metrics v0.3.11
 	github.com/google/uuid v1.3.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
