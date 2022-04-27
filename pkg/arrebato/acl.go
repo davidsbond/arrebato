@@ -2,6 +2,7 @@ package arrebato
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"google.golang.org/grpc/codes"
@@ -15,19 +16,19 @@ type (
 	// The ACL type represents the server's access-control list. It describes which clients are able to produce/consume
 	// on desired topics.
 	ACL struct {
-		Entries []ACLEntry
+		Entries []ACLEntry `json:"entries"`
 	}
 
 	// The ACLEntry type represents the relationship between a single client and topic.
 	ACLEntry struct {
 		// The name of the topic.
-		Topic string
+		Topic string `json:"topic"`
 		// The client identifier the entry refers to. In an insecure environment, this can be an arbitrary string that the
 		// client will use to identify itself in the request metadata. When using mutual TLS, this will be a SPIFFE ID that
 		// the client will include in its TLS certificate.
-		Client string
+		Client string `json:"client"`
 		// The permissions the client has on the topic.
-		Permissions []ACLPermission
+		Permissions []ACLPermission `json:"permissions"`
 	}
 
 	// The ACLPermission type is an enumeration that denotes an action a client can make on a topic.
@@ -46,6 +47,24 @@ const (
 
 func (p ACLPermission) String() string {
 	return acl.Permission_name[int32(p)]
+}
+
+// UnmarshalJSON is called when an ACLPermission type is unmarshalled from JSON. It assumes the JSON representation
+// is a string that matches the protobuf name.
+func (p *ACLPermission) UnmarshalJSON(b []byte) error {
+	var str string
+	if err := json.Unmarshal(b, &str); err != nil {
+		return err
+	}
+
+	*p = ACLPermission(acl.Permission_value[str])
+	return nil
+}
+
+// MarshalJSON is called when an ACLPermission type is marshalled to its JSON representation. It marshals as a string
+// that matches the protobuf value.
+func (p ACLPermission) MarshalJSON() ([]byte, error) {
+	return json.Marshal(acl.Permission_name[int32(p)])
 }
 
 func (a ACL) toProto() *acl.ACL {

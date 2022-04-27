@@ -25,6 +25,7 @@ func Create() *cobra.Command {
 	cmd.AddCommand(
 		createTopic(),
 		createSigningKey(),
+		createACL(),
 	)
 
 	return cmd
@@ -89,4 +90,31 @@ func createSigningKey() *cobra.Command {
 	flags.BoolVar(&jsonOut, "json", false, "Output signing key in JSON format")
 
 	return cmd
+}
+
+func createACL() *cobra.Command {
+	return &cobra.Command{
+		Use:   "acl [flags] <aclfile>",
+		Short: "Update the server's access-control list",
+		Long:  "This command modifies the server's access control list, changing which clients can use which topics. Expects a JSON file as the first and only argument",
+		Args:  cobra.ExactValidArgs(1),
+		RunE: withClient(func(ctx context.Context, client *arrebato.Client, args []string) error {
+			file, err := os.Open(args[0])
+			if err != nil {
+				return err
+			}
+
+			defer closeIt(file)
+			var acl arrebato.ACL
+			if err = json.NewDecoder(file).Decode(&acl); err != nil {
+				return err
+			}
+
+			if err = client.SetACL(ctx, acl); err != nil {
+				return err
+			}
+
+			return nil
+		}),
+	}
 }
