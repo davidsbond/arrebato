@@ -8,3 +8,4 @@ dist/
 *.upx
 serf.key
 /licenses
+_example/
