@@ -232,7 +232,7 @@ func (svr *Server) Apply(log *raft.Log) interface{} {
 	// the state so if the log index is less than the last known index sent to the FSM then we do nothing. We can't
 	// fully rely on the raft mechanism to know exactly the last log index that the FSM successfully handled, so we
 	// also track that manually.
-	if log.Index < lastAppliedIndex && lastAppliedIndex != 0 {
+	if log.Index <= lastAppliedIndex && lastAppliedIndex != 0 {
 		return nil
 	}
 
