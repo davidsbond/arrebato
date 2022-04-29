@@ -65,6 +65,7 @@ func (svr *Server) serveMetrics(ctx context.Context, config Config) error {
 		return s.Close()
 	})
 
+	defer metrics.Shutdown()
 	return grp.Wait()
 }
 
