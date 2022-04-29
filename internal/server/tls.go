@@ -43,6 +43,7 @@ func (c TLSConfig) tlsConfig() (*tls.Config, error) {
 		Certificates: []tls.Certificate{cert},
 		ClientAuth:   tls.RequireAndVerifyClientCert,
 		ClientCAs:    certPool,
+		RootCAs:      certPool,
 		MinVersion:   tls.VersionTLS13,
 	}, nil
 }
