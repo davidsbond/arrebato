@@ -3,13 +3,10 @@ package server
 import (
 	"compress/gzip"
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -74,26 +71,13 @@ func setupRaft(config Config, fsm raft.FSM, logger hclog.Logger) (*raft.Raft, *r
 	}
 
 	if config.TLS.enabled() {
-		ca, err := ioutil.ReadFile(config.TLS.CAFile)
+		// We generate a TLS client configuration here to enable TLS for raft transport.
+		tlsConfig, err := config.TLS.tlsConfig()
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to read CA file: %w", err)
+			return nil, nil, nil, fmt.Errorf("failed to create TLS config: %w", err)
 		}
 
-		certPool := x509.NewCertPool()
-		certPool.AppendCertsFromPEM(ca)
-
-		cert, err := tls.LoadX509KeyPair(config.TLS.CertFile, config.TLS.KeyFile)
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to load TLS files: %w", err)
-		}
-
-		options = append(options, grpc.WithTransportCredentials(
-			credentials.NewTLS(&tls.Config{
-				Certificates: []tls.Certificate{cert},
-				RootCAs:      certPool,
-				MinVersion:   tls.VersionTLS13,
-			})),
-		)
+		options = append(options, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 	} else {
 		options = append(options, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}

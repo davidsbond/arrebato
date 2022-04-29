@@ -109,18 +109,6 @@ type (
 		TLS     TLSConfig
 		Metrics MetricConfig
 	}
-
-	// The TLSConfig type contains configuration values for TLS between the server nodes and clients.
-	TLSConfig struct {
-		// Location of the TLS certificate file to use for transport credentials.
-		CertFile string
-
-		// Location of the TLS Key file to use for transport credentials.
-		KeyFile string
-
-		// The certificate of the CA that signs client certificates.
-		CAFile string
-	}
 )
 
 // New returns a new instance of the Server type based on the provided Config.
