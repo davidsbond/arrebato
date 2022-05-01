@@ -244,9 +244,9 @@ func (svr *Server) Apply(log *raft.Log) interface{} {
 	case *signingcmd.CreatePublicKey:
 		err = svr.signingHandler.Create(ctx, payload)
 	case *nodecmd.AddNode:
-		return nil
+		err = svr.nodeHandler.Add(ctx, payload)
 	case *nodecmd.RemoveNode:
-		return nil
+		err = svr.nodeHandler.Remove(ctx, payload)
 	default:
 		break
 	}
