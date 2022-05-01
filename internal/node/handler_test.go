@@ -104,3 +104,46 @@ func TestHandler_Remove(t *testing.T) {
 		})
 	}
 }
+
+func TestHandler_AssignTopic(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		Name         string
+		Error        error
+		ExpectsError bool
+		Command      *nodecmd.AssignTopic
+	}{
+		{
+			Name: "It should assign a topic to a node",
+			Command: &nodecmd.AssignTopic{
+				NodeName:  "test",
+				TopicName: "test",
+			},
+		},
+		{
+			Name:         "It should propagate errors",
+			Error:        io.EOF,
+			ExpectsError: true,
+			Command: &nodecmd.AssignTopic{
+				NodeName:  "test",
+				TopicName: "test",
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.Name, func(t *testing.T) {
+			store := &MockStore{err: tc.Error}
+			ctx := testutil.Context(t)
+
+			err := node.NewHandler(store, hclog.NewNullLogger()).AssignTopic(ctx, tc.Command)
+			if tc.ExpectsError {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+		})
+	}
+}
