@@ -27,6 +27,7 @@ import (
 	aclcmd "github.com/davidsbond/arrebato/internal/proto/arrebato/acl/command/v1"
 	consumercmd "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/command/v1"
 	messagecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/message/command/v1"
+	nodecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/node/command/v1"
 	signingcmd "github.com/davidsbond/arrebato/internal/proto/arrebato/signing/command/v1"
 	topiccmd "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/command/v1"
 )
@@ -238,6 +239,10 @@ func (svr *Server) Apply(log *raft.Log) interface{} {
 		err = svr.aclHandler.Set(ctx, payload)
 	case *signingcmd.CreatePublicKey:
 		err = svr.signingHandler.Create(ctx, payload)
+	case *nodecmd.AddNode:
+		return nil
+	case *nodecmd.RemoveNode:
+		return nil
 	default:
 		break
 	}
