@@ -76,7 +76,9 @@ type (
 		signingGRPC    *signing.GRPC
 
 		// Dependencies for Nodes
-		nodeGRPC *node.GRPC
+		nodeStore   *node.BoltStore
+		nodeHandler *node.Handler
+		nodeGRPC    *node.GRPC
 	}
 
 	// The Config type contains configuration values for the Server.
@@ -158,10 +160,9 @@ func New(config Config) (*Server, error) {
 	executor := command.NewExecutor(server.raft, config.Raft.Timeout)
 
 	// Node stack
-	info := node.Info{
-		LocalID: raft.ServerID(config.AdvertiseAddress),
-		Version: config.Version,
-	}
+	info := node.Info{LocalID: raft.ServerID(config.AdvertiseAddress), Version: config.Version}
+	server.nodeStore = node.NewBoltStore(server.store)
+	server.nodeHandler = node.NewHandler(server.nodeStore, server.logger)
 	server.nodeGRPC = node.NewGRPC(server.raft, info, backup.NewBoltDB(server.store))
 
 	// ACL stack
