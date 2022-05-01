@@ -17,3 +17,9 @@ message AddNode {
 message RemoveNode {
   string name = 1;
 }
+
+// The AssignTopic message is a command indicating that a topic has been assigned to a given node.
+message AssignTopic {
+  string node_name = 1;
+  string topic_name = 2;
+}
