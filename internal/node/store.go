@@ -61,3 +61,85 @@ func (bs *BoltStore) Delete(ctx context.Context, name string) error {
 		return nil
 	})
 }
+
+// List all nodes in the store.
+func (bs *BoltStore) List(ctx context.Context) ([]*node.Node, error) {
+	results := make([]*node.Node, 0)
+	err := bs.db.View(func(tx *bbolt.Tx) error {
+		bucket := tx.Bucket([]byte(nodeKey))
+		if bucket == nil {
+			return nil
+		}
+
+		return bucket.ForEach(func(k, v []byte) error {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+
+			var n node.Node
+			if err := proto.Unmarshal(v, &n); err != nil {
+				return fmt.Errorf("failed to unmarshal node: %w", err)
+			}
+
+			results = append(results, &n)
+			return nil
+		})
+	})
+
+	return results, err
+}
+
+// AssignTopic adds the provided topic name to a node's list of topics. It also checks other node records and removes
+// the topic from their list if present.
+func (bs *BoltStore) AssignTopic(ctx context.Context, nodeName string, topicName string) error {
+	return bs.db.Update(func(tx *bbolt.Tx) error {
+		bucket, err := tx.CreateBucketIfNotExists([]byte(nodeKey))
+		if err != nil {
+			return fmt.Errorf("failed to open node bucket: %w", err)
+		}
+
+		return bucket.ForEach(func(k, v []byte) error {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+
+			var n node.Node
+			if err = proto.Unmarshal(v, &n); err != nil {
+				return fmt.Errorf("failed to unmarshal node: %w", err)
+			}
+
+			// If this is the desired node, ensure the topic is not already assigned to it, append the
+			// new topic name and save the updated record.
+			if n.GetName() == nodeName {
+				for _, tp := range n.GetTopics() {
+					if tp == topicName {
+						return nil
+					}
+				}
+
+				n.Topics = append(n.Topics, topicName)
+				value, err := proto.Marshal(&n)
+				if err != nil {
+					return fmt.Errorf("failed to marshal node: %w", err)
+				}
+
+				return bucket.Put([]byte(n.GetName()), value)
+			}
+
+			// Remove any references to the topic from other node records
+			for i, tp := range n.GetTopics() {
+				if tp == topicName {
+					n.Topics = append(n.Topics[:i], n.Topics[i+1:]...)
+					value, err := proto.Marshal(&n)
+					if err != nil {
+						return fmt.Errorf("failed to marshal node: %w", err)
+					}
+
+					return bucket.Put([]byte(n.GetName()), value)
+				}
+			}
+
+			return nil
+		})
+	})
+}

@@ -247,6 +247,8 @@ func (svr *Server) Apply(log *raft.Log) interface{} {
 		err = svr.nodeHandler.Add(ctx, payload)
 	case *nodecmd.RemoveNode:
 		err = svr.nodeHandler.Remove(ctx, payload)
+	case *nodecmd.AssignTopic:
+		err = svr.nodeHandler.AssignTopic(ctx, payload)
 	default:
 		break
 	}

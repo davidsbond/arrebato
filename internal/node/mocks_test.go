@@ -26,6 +26,10 @@ type (
 	}
 )
 
+func (mm *MockStore) AssignTopic(ctx context.Context, nodeName, topicName string) error {
+	return mm.err
+}
+
 func (mm *MockStore) Create(ctx context.Context, n *node.Node) error {
 	mm.saved = n
 	return mm.err
