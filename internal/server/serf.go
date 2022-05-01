@@ -53,7 +53,6 @@ func setupSerf(config Config, logger hclog.Logger) (<-chan serf.Event, *serf.Ser
 	memberlistConfig := memberlist.DefaultLANConfig()
 	memberlistConfig.BindAddr = config.BindAddress
 	memberlistConfig.BindPort = config.Serf.Port
-	memberlistConfig.AdvertiseAddr = config.AdvertiseAddress
 	memberlistConfig.AdvertisePort = config.Serf.Port
 	memberlistConfig.Logger = logger.StandardLogger(&hclog.StandardLoggerOptions{
 		InferLevels:              true,
@@ -67,6 +66,7 @@ func setupSerf(config Config, logger hclog.Logger) (<-chan serf.Event, *serf.Ser
 
 	serfEvents := make(chan serf.Event, 1)
 	serfConfig := serf.DefaultConfig()
+	serfConfig.MemberlistConfig = memberlistConfig
 	serfConfig.Logger = logger.StandardLogger(&hclog.StandardLoggerOptions{
 		InferLevels:              true,
 		InferLevelsWithTimestamp: true,
