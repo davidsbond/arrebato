@@ -13,7 +13,7 @@ import (
 
 	"github.com/davidsbond/arrebato/internal/command"
 	nodecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/node/command/v1"
-	"github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
+	nodepb "github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
 	topiccmd "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/command/v1"
 	topicsvc "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/service/v1"
 	topicpb "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/v1"
@@ -30,7 +30,7 @@ func TestGRPC_Create(t *testing.T) {
 		ExpectedCode codes.Code
 		Error        error
 		Expected     []command.Command
-		Nodes        []*node.Node
+		Nodes        []*nodepb.Node
 	}{
 		{
 			Name: "It should execute a command to create a topic",
@@ -40,7 +40,7 @@ func TestGRPC_Create(t *testing.T) {
 					MessageRetentionPeriod: durationpb.New(time.Minute),
 				},
 			},
-			Nodes: []*node.Node{
+			Nodes: []*nodepb.Node{
 				{
 					Name: "test-node",
 				},

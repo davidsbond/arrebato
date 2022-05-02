@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"go.etcd.io/bbolt"
@@ -24,7 +25,10 @@ func NewBoltStore(db *bbolt.DB) *BoltStore {
 	return &BoltStore{db: db}
 }
 
-// Create a record for the node.
+// ErrNodeExists is the error given when attempting to create a node that already exists in the store.
+var ErrNodeExists = errors.New("node exists")
+
+// Create a record for the node. Returns ErrNodeExists if a record already exists for the given node.
 func (bs *BoltStore) Create(ctx context.Context, n *node.Node) error {
 	return bs.db.Update(func(tx *bbolt.Tx) error {
 		bucket, err := tx.CreateBucketIfNotExists([]byte(nodeKey))
@@ -33,6 +37,10 @@ func (bs *BoltStore) Create(ctx context.Context, n *node.Node) error {
 		}
 
 		key := []byte(n.GetName())
+		if value := bucket.Get(key); value != nil {
+			return ErrNodeExists
+		}
+
 		value, err := proto.Marshal(n)
 		if err != nil {
 			return fmt.Errorf("failed to marshal node: %w", err)
@@ -128,15 +136,17 @@ func (bs *BoltStore) AssignTopic(ctx context.Context, nodeName string, topicName
 
 			// Remove any references to the topic from other node records
 			for i, tp := range n.GetTopics() {
-				if tp == topicName {
-					n.Topics = append(n.Topics[:i], n.Topics[i+1:]...)
-					value, err := proto.Marshal(&n)
-					if err != nil {
-						return fmt.Errorf("failed to marshal node: %w", err)
-					}
-
-					return bucket.Put([]byte(n.GetName()), value)
+				if tp != topicName {
+					continue
 				}
+
+				n.Topics = append(n.Topics[:i], n.Topics[i+1:]...)
+				value, err := proto.Marshal(&n)
+				if err != nil {
+					return fmt.Errorf("failed to marshal node: %w", err)
+				}
+
+				return bucket.Put([]byte(n.GetName()), value)
 			}
 
 			return nil

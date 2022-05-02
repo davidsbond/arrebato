@@ -247,6 +247,10 @@ func (svr *Server) Start(ctx context.Context) error {
 	})
 
 	grp.Go(func() error {
+		return svr.handleLeadershipChanges(ctx)
+	})
+
+	grp.Go(func() error {
 		return svr.serveGRPC(ctx)
 	})
 
