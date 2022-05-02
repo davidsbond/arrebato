@@ -8,9 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/davidsbond/arrebato/internal/command"
+	nodecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/node/command/v1"
+	"github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
 	topiccmd "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/command/v1"
 	topicsvc "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/service/v1"
 	topicpb "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/v1"
@@ -26,7 +29,8 @@ func TestGRPC_Create(t *testing.T) {
 		Request      *topicsvc.CreateRequest
 		ExpectedCode codes.Code
 		Error        error
-		Expected     command.Command
+		Expected     []command.Command
+		Nodes        []*node.Node
 	}{
 		{
 			Name: "It should execute a command to create a topic",
@@ -36,12 +40,23 @@ func TestGRPC_Create(t *testing.T) {
 					MessageRetentionPeriod: durationpb.New(time.Minute),
 				},
 			},
-			Expected: command.New(&topiccmd.CreateTopic{
-				Topic: &topicpb.Topic{
-					Name:                   "test-topic",
-					MessageRetentionPeriod: durationpb.New(time.Minute),
+			Nodes: []*node.Node{
+				{
+					Name: "test-node",
 				},
-			}),
+			},
+			Expected: []command.Command{
+				command.New(&topiccmd.CreateTopic{
+					Topic: &topicpb.Topic{
+						Name:                   "test-topic",
+						MessageRetentionPeriod: durationpb.New(time.Minute),
+					},
+				}),
+				command.New(&nodecmd.AssignTopic{
+					NodeName:  "test-node",
+					TopicName: "test-topic",
+				}),
+			},
 		},
 		{
 			Name: "It should return a failed precondition if the node is not the leader",
@@ -71,8 +86,9 @@ func TestGRPC_Create(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			ctx := testutil.Context(t)
 			executor := &MockExecutor{err: tc.Error}
+			nodes := &MockNodeLister{err: tc.Error, nodes: tc.Nodes}
 
-			resp, err := topic.NewGRPC(executor, nil).Create(ctx, tc.Request)
+			resp, err := topic.NewGRPC(executor, nil, nodes).Create(ctx, tc.Request)
 			require.EqualValues(t, tc.ExpectedCode, status.Code(err))
 
 			if tc.Error != nil {
@@ -81,11 +97,12 @@ func TestGRPC_Create(t *testing.T) {
 				return
 			}
 
-			expected := tc.Expected.Payload().(*topiccmd.CreateTopic)
-			actual := executor.command.Payload().(*topiccmd.CreateTopic)
+			require.Len(t, executor.commands, 2)
+			for i, expected := range tc.Expected {
+				actual := executor.commands[i]
 
-			assert.EqualValues(t, expected.GetTopic().GetName(), actual.GetTopic().GetName())
-			assert.EqualValues(t, expected.GetTopic().GetMessageRetentionPeriod(), actual.GetTopic().GetMessageRetentionPeriod())
+				assert.True(t, proto.Equal(expected.Payload(), actual.Payload()))
+			}
 		})
 	}
 }
@@ -132,7 +149,7 @@ func TestGRPC_Delete(t *testing.T) {
 			ctx := testutil.Context(t)
 			executor := &MockExecutor{err: tc.Error}
 
-			resp, err := topic.NewGRPC(executor, nil).Delete(ctx, tc.Request)
+			resp, err := topic.NewGRPC(executor, nil, nil).Delete(ctx, tc.Request)
 			require.EqualValues(t, tc.ExpectedCode, status.Code(err))
 
 			if tc.Error != nil {
@@ -141,9 +158,9 @@ func TestGRPC_Delete(t *testing.T) {
 				return
 			}
 
+			require.Len(t, executor.commands, 1)
 			expected := tc.Expected.Payload().(*topiccmd.DeleteTopic)
-			actual := executor.command.Payload().(*topiccmd.DeleteTopic)
-
+			actual := executor.commands[0].Payload().(*topiccmd.DeleteTopic)
 			assert.EqualValues(t, expected.GetName(), actual.GetName())
 		})
 	}
@@ -199,7 +216,7 @@ func TestGRPC_Get(t *testing.T) {
 			ctx := testutil.Context(t)
 
 			querier := &MockQuerier{err: tc.Error, topic: tc.Seed}
-			resp, err := topic.NewGRPC(nil, querier).Get(ctx, tc.Request)
+			resp, err := topic.NewGRPC(nil, querier, nil).Get(ctx, tc.Request)
 
 			require.EqualValues(t, tc.ExpectedCode, status.Code(err))
 			if tc.Error != nil {
@@ -253,7 +270,7 @@ func TestGRPC_List(t *testing.T) {
 			ctx := testutil.Context(t)
 
 			querier := &MockQuerier{err: tc.Error, topic: tc.Seed}
-			resp, err := topic.NewGRPC(nil, querier).List(ctx, tc.Request)
+			resp, err := topic.NewGRPC(nil, querier, nil).List(ctx, tc.Request)
 
 			require.EqualValues(t, tc.ExpectedCode, status.Code(err))
 			if tc.Error != nil {
