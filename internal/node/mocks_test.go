@@ -10,21 +10,23 @@ import (
 
 type (
 	MockRaft struct {
-		state  raft.RaftState
-		config raft.Configuration
-	}
-
-	MockConfigurationFuture struct {
-		raft.ConfigurationFuture
-
-		config raft.Configuration
+		state raft.RaftState
 	}
 
 	MockStore struct {
 		saved *node.Node
 		err   error
 	}
+
+	MockLister struct {
+		nodes []*node.Node
+		err   error
+	}
 )
+
+func (mm *MockLister) List(ctx context.Context) ([]*node.Node, error) {
+	return mm.nodes, mm.err
+}
 
 func (mm *MockStore) AssignTopic(ctx context.Context, nodeName, topicName string) error {
 	return mm.err
@@ -39,18 +41,6 @@ func (mm *MockStore) Delete(ctx context.Context, name string) error {
 	return mm.err
 }
 
-func (mm *MockRaft) GetConfiguration() raft.ConfigurationFuture {
-	return &MockConfigurationFuture{config: mm.config}
-}
-
 func (mm *MockRaft) State() raft.RaftState {
 	return mm.state
-}
-
-func (mm *MockConfigurationFuture) Error() error {
-	return nil
-}
-
-func (mm *MockConfigurationFuture) Configuration() raft.Configuration {
-	return mm.config
 }

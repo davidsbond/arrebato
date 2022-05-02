@@ -23,7 +23,8 @@ type (
 	// information on the node.
 	GRPC struct {
 		raft    Raft
-		localID raft.ServerID
+		nodes   Lister
+		name    string
 		backup  io.WriterTo
 		version string
 	}
@@ -31,19 +32,30 @@ type (
 	// The Raft interface describes types that can return information regarding the raft state.
 	Raft interface {
 		State() raft.RaftState
-		GetConfiguration() raft.ConfigurationFuture
+	}
+
+	// The Lister interface describes types that can list nodes within the state.
+	Lister interface {
+		// List should return all nodes within the cluster, including the current one.
+		List(ctx context.Context) ([]*node.Node, error)
 	}
 
 	// The Info type contains node information served from the gRPC service.
 	Info struct {
-		LocalID raft.ServerID
+		Name    string
 		Version string
 	}
 )
 
 // NewGRPC returns a new instance of the GRPC type that returns node information based on the Raft state.
-func NewGRPC(raft Raft, info Info, backup io.WriterTo) *GRPC {
-	return &GRPC{raft: raft, localID: info.LocalID, version: info.Version, backup: backup}
+func NewGRPC(raft Raft, info Info, backup io.WriterTo, nodes Lister) *GRPC {
+	return &GRPC{
+		raft:    raft,
+		name:    info.Name,
+		version: info.Version,
+		backup:  backup,
+		nodes:   nodes,
+	}
 }
 
 // Register the GRPC service onto the grpc.ServiceRegistrar.
@@ -53,25 +65,27 @@ func (svr *GRPC) Register(registrar grpc.ServiceRegistrar, health *health.Server
 }
 
 // Describe the node.
-func (svr *GRPC) Describe(_ context.Context, _ *nodesvc.DescribeRequest) (*nodesvc.DescribeResponse, error) {
-	future := svr.raft.GetConfiguration()
-	if future.Error() != nil {
-		return nil, status.Errorf(codes.Internal, "failed to query raft configuration: %v", future.Error())
+func (svr *GRPC) Describe(ctx context.Context, _ *nodesvc.DescribeRequest) (*nodesvc.DescribeResponse, error) {
+	nodes, err := svr.nodes.List(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to list nodes")
 	}
 
-	config := future.Configuration()
 	peers := make([]string, 0)
-	for _, server := range config.Servers {
-		if server.ID == svr.localID {
+	topics := make([]string, 0)
+	for _, n := range nodes {
+		if n.GetName() == svr.name {
+			topics = n.GetTopics()
 			continue
 		}
 
-		peers = append(peers, string(server.ID))
+		peers = append(peers, n.GetName())
 	}
 
 	return &nodesvc.DescribeResponse{
 		Node: &node.Node{
-			Name:    string(svr.localID),
+			Name:    svr.name,
+			Topics:  topics,
 			Leader:  svr.raft.State() == raft.Leader,
 			Peers:   peers,
 			Version: svr.version,
