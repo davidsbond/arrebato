@@ -14,7 +14,7 @@ import (
 
 	"github.com/davidsbond/arrebato/internal/command"
 	nodecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/node/command/v1"
-	"github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
+	nodepb "github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
 	topiccmd "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/command/v1"
 	topicsvc "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/service/v1"
 	"github.com/davidsbond/arrebato/internal/proto/arrebato/topic/v1"
@@ -51,7 +51,7 @@ type (
 	// The NodeLister interface describes types that can list nodes within the cluster.
 	NodeLister interface {
 		// List should return all node records in the state.
-		List(ctx context.Context) ([]*node.Node, error)
+		List(ctx context.Context) ([]*nodepb.Node, error)
 	}
 )
 
@@ -90,7 +90,7 @@ func (svr *GRPC) Create(ctx context.Context, request *topicsvc.CreateRequest) (*
 		return nil, status.Errorf(codes.Internal, "failed to list nodes: %v", err)
 	}
 
-	var selected *node.Node
+	var selected *nodepb.Node
 	for _, n := range nodes {
 		if len(n.GetTopics()) <= len(selected.GetTopics()) {
 			selected = n

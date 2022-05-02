@@ -15,8 +15,9 @@ import (
 	"github.com/hashicorp/serf/serf"
 
 	"github.com/davidsbond/arrebato/internal/command"
+	"github.com/davidsbond/arrebato/internal/node"
 	nodecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/node/command/v1"
-	"github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
+	nodepb "github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
 )
 
 type (
@@ -202,7 +203,7 @@ func (svr *Server) handleSerfEventMemberJoin(ctx context.Context, event serf.Mem
 		}
 
 		cmd := command.New(&nodecmd.AddNode{
-			Node: &node.Node{
+			Node: &nodepb.Node{
 				Name: member.Name,
 			},
 		})
@@ -211,6 +212,8 @@ func (svr *Server) handleSerfEventMemberJoin(ctx context.Context, event serf.Mem
 		switch {
 		case errors.Is(err, raft.ErrLeadershipLost):
 			return nil
+		case errors.Is(err, node.ErrNodeExists):
+			continue
 		case err != nil:
 			return fmt.Errorf("failed to execute command: %w", err)
 		}

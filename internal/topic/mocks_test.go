@@ -3,7 +3,7 @@ package topic_test
 import (
 	"context"
 
-	"github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
+	nodepb "github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
 
 	"github.com/davidsbond/arrebato/internal/command"
 	topicpb "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/v1"
@@ -27,12 +27,12 @@ type (
 	}
 
 	MockNodeLister struct {
-		nodes []*node.Node
+		nodes []*nodepb.Node
 		err   error
 	}
 )
 
-func (mm *MockNodeLister) List(ctx context.Context) ([]*node.Node, error) {
+func (mm *MockNodeLister) List(ctx context.Context) ([]*nodepb.Node, error) {
 	return mm.nodes, mm.err
 }
 
