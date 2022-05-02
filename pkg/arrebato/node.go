@@ -20,6 +20,8 @@ type (
 		Version string `json:"version"`
 		// Peers known to the node
 		Peers []string `json:"peers"`
+		// Topics assigned to the node
+		Topics []string `json:"topics"`
 	}
 )
 
@@ -37,6 +39,7 @@ func (c *Client) Nodes(ctx context.Context) ([]Node, error) {
 			Leader:  resp.GetNode().GetLeader(),
 			Version: resp.GetNode().GetVersion(),
 			Peers:   resp.GetNode().GetPeers(),
+			Topics:  resp.GetNode().GetTopics(),
 		})
 
 		return nil
@@ -65,5 +68,6 @@ func (c *Client) Node(ctx context.Context, name string) (Node, error) {
 		Leader:  resp.GetNode().GetLeader(),
 		Version: resp.GetNode().GetVersion(),
 		Peers:   resp.GetNode().GetPeers(),
+		Topics:  resp.GetNode().GetTopics(),
 	}, nil
 }
