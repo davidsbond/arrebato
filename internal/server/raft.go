@@ -19,6 +19,7 @@ import (
 	raftboltdb "github.com/hashicorp/raft-boltdb/v2"
 	"go.etcd.io/bbolt"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -59,7 +60,10 @@ func setupRaft(config Config, fsm raft.FSM, logger hclog.Logger) (*raft.Raft, *r
 	raftAddress := fmt.Sprint(config.BindAddress, ":", config.GRPC.Port)
 	options := []grpc.DialOption{
 		grpc.WithChainUnaryInterceptor(
-			grpc_retry.UnaryClientInterceptor(),
+			grpc_retry.UnaryClientInterceptor(
+				grpc_retry.WithCodes(codes.Unavailable),
+				grpc_retry.WithMax(100),
+			),
 			grpc_prometheus.UnaryClientInterceptor,
 			clientinfo.UnaryClientInterceptor(config.AdvertiseAddress),
 		),
