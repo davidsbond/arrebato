@@ -37,6 +37,7 @@ linters:
     - contextcheck
     - containedctx
     - nilerr
+    - gocognit
 
 issues:
   exclude-use-default: false

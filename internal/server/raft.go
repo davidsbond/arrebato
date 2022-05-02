@@ -25,10 +25,12 @@ import (
 
 	"github.com/davidsbond/arrebato/internal/clientinfo"
 	"github.com/davidsbond/arrebato/internal/command"
+	"github.com/davidsbond/arrebato/internal/node"
 	aclcmd "github.com/davidsbond/arrebato/internal/proto/arrebato/acl/command/v1"
 	consumercmd "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/command/v1"
 	messagecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/message/command/v1"
 	nodecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/node/command/v1"
+	nodepb "github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
 	signingcmd "github.com/davidsbond/arrebato/internal/proto/arrebato/signing/command/v1"
 	topiccmd "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/command/v1"
 )
@@ -302,4 +304,33 @@ func (svr *Server) lastAppliedIndex() (uint64, error) {
 // IsLeader returns true if this server instance is the cluster leader.
 func (svr *Server) IsLeader() bool {
 	return svr.raft.State() == raft.Leader
+}
+
+func (svr *Server) handleLeadershipChanges(ctx context.Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case isLeader := <-svr.raft.LeaderCh():
+			if !isLeader {
+				continue
+			}
+
+			cmd := command.New(&nodecmd.AddNode{
+				Node: &nodepb.Node{
+					Name: svr.config.AdvertiseAddress,
+				},
+			})
+
+			err := svr.executor.Execute(ctx, cmd)
+			switch {
+			case errors.Is(err, raft.ErrLeadershipLost):
+				continue
+			case errors.Is(err, node.ErrNodeExists):
+				continue
+			case err != nil:
+				return fmt.Errorf("failed to execute command: %w", err)
+			}
+		}
+	}
 }
