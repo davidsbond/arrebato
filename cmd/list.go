@@ -110,9 +110,9 @@ func listNodes() *cobra.Command {
 				return json.NewEncoder(os.Stdout).Encode(nodes)
 			}
 
-			builder := table.NewBuilder("NAME", "LEADER", "VERSION")
+			builder := table.NewBuilder("NAME", "LEADER", "VERSION", "TOPICS")
 			for _, n := range nodes {
-				builder.AddRow(n.Name, n.Leader, n.Version)
+				builder.AddRow(n.Name, n.Leader, n.Version, len(n.Topics))
 			}
 
 			return builder.Build(ctx, os.Stdout)

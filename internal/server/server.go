@@ -161,10 +161,10 @@ func New(config Config) (*Server, error) {
 	server.executor = command.NewExecutor(server.raft, config.Raft.Timeout)
 
 	// Node stack
-	info := node.Info{LocalID: raft.ServerID(config.AdvertiseAddress), Version: config.Version}
+	info := node.Info{Name: config.AdvertiseAddress, Version: config.Version}
 	server.nodeStore = node.NewBoltStore(server.store)
 	server.nodeHandler = node.NewHandler(server.nodeStore, server.logger)
-	server.nodeGRPC = node.NewGRPC(server.raft, info, backup.NewBoltDB(server.store))
+	server.nodeGRPC = node.NewGRPC(server.raft, info, backup.NewBoltDB(server.store), server.nodeStore)
 
 	// ACL stack
 	server.aclStore = acl.NewBoltStore(server.store)
