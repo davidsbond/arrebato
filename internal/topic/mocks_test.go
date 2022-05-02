@@ -3,6 +3,8 @@ package topic_test
 import (
 	"context"
 
+	"github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
+
 	"github.com/davidsbond/arrebato/internal/command"
 	topicpb "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/v1"
 )
@@ -15,15 +17,24 @@ type (
 	}
 
 	MockExecutor struct {
-		command command.Command
-		err     error
+		commands []command.Command
+		err      error
 	}
 
 	MockQuerier struct {
 		topic *topicpb.Topic
 		err   error
 	}
+
+	MockNodeLister struct {
+		nodes []*node.Node
+		err   error
+	}
 )
+
+func (mm *MockNodeLister) List(ctx context.Context) ([]*node.Node, error) {
+	return mm.nodes, mm.err
+}
 
 func (mm *MockQuerier) Get(ctx context.Context, name string) (*topicpb.Topic, error) {
 	if mm.err != nil {
@@ -64,6 +75,6 @@ func (mm *MockExecutor) Execute(ctx context.Context, cmd command.Command) error 
 		return mm.err
 	}
 
-	mm.command = cmd
+	mm.commands = append(mm.commands, cmd)
 	return nil
 }

@@ -174,7 +174,7 @@ func New(config Config) (*Server, error) {
 	// Topic stack
 	server.topicStore = topic.NewBoltStore(server.store)
 	server.topicHandler = topic.NewHandler(server.topicStore, server.logger)
-	server.topicGRPC = topic.NewGRPC(server.executor, server.topicStore)
+	server.topicGRPC = topic.NewGRPC(server.executor, server.topicStore, server.nodeStore)
 
 	// Consumer stack
 	server.consumerStore = consumer.NewBoltStore(server.store)
