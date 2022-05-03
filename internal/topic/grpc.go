@@ -5,6 +5,7 @@ package topic
 import (
 	"context"
 	"errors"
+	"sort"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -90,20 +91,13 @@ func (svr *GRPC) Create(ctx context.Context, request *topicsvc.CreateRequest) (*
 		return nil, status.Errorf(codes.Internal, "failed to list nodes: %v", err)
 	}
 
-	var selected *nodepb.Node
-	for _, n := range nodes {
-		if len(n.GetTopics()) <= len(selected.GetTopics()) {
-			selected = n
-		}
-	}
-
-	if selected == nil {
-		selected = nodes[0]
-	}
+	sort.Slice(nodes, func(i, j int) bool {
+		return len(nodes[i].GetTopics()) < len(nodes[j].GetTopics())
+	})
 
 	cmd = command.New(&nodecmd.AssignTopic{
 		TopicName: request.GetTopic().GetName(),
-		NodeName:  selected.GetName(),
+		NodeName:  nodes[0].GetName(),
 	})
 
 	err = svr.executor.Execute(ctx, cmd)

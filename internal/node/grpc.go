@@ -4,6 +4,7 @@ package node
 import (
 	"context"
 	"io"
+	"sort"
 	"time"
 
 	"github.com/hashicorp/raft"
@@ -81,6 +82,10 @@ func (svr *GRPC) Describe(ctx context.Context, _ *nodesvc.DescribeRequest) (*nod
 
 		peers = append(peers, n.GetName())
 	}
+
+	sort.Slice(topics, func(i, j int) bool {
+		return topics[i] < topics[j]
+	})
 
 	return &nodesvc.DescribeResponse{
 		Node: &node.Node{

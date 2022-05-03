@@ -49,7 +49,7 @@ func (c *Client) Nodes(ctx context.Context) ([]Node, error) {
 	sort.Slice(nodes, func(i, j int) bool {
 		return nodes[i].Name < nodes[j].Name
 	})
-	
+
 	return nodes, err
 }
 
