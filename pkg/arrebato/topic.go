@@ -3,6 +3,7 @@ package arrebato
 import (
 	"context"
 	"errors"
+	"sort"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -101,6 +102,10 @@ func (c *Client) Topics(ctx context.Context) ([]Topic, error) {
 			RequireVerifiedMessages: tp.GetRequireVerifiedMessages(),
 		}
 	}
+
+	sort.Slice(topics, func(i, j int) bool {
+		return topics[i].Name < topics[j].Name
+	})
 
 	return topics, nil
 }
