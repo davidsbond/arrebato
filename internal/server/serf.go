@@ -258,6 +258,10 @@ func (svr *Server) handleSerfEventMemberLeave(ctx context.Context, event serf.Me
 		}
 	}
 
+	if svr.IsLeader() {
+		return svr.ensureTopicsAreAssigned(ctx)
+	}
+
 	return nil
 }
 
