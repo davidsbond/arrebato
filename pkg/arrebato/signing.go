@@ -3,6 +3,7 @@ package arrebato
 import (
 	"context"
 	"errors"
+	"sort"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -84,6 +85,10 @@ func (c *Client) PublicKeys(ctx context.Context) ([]PublicKey, error) {
 			PublicKey: k.GetPublicKey(),
 		}
 	}
+
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].ClientID < out[j].ClientID
+	})
 
 	return out, nil
 }
