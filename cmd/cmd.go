@@ -2,9 +2,11 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -121,4 +123,22 @@ func closeIt(c io.Closer) {
 	if err := c.Close(); err != nil {
 		hclog.Default().Error("failed to close", "error", err)
 	}
+}
+
+func confirmf(input io.Reader, output io.Writer, prompt string, args ...interface{}) (bool, error) {
+	r := bufio.NewReader(input)
+
+	fmt.Fprintf(output, prompt, args...)
+	fmt.Fprint(output, " [y/N]: ")
+
+	value, err := r.ReadString('\n')
+	if err != nil {
+		return false, fmt.Errorf("failed to read input: %w", err)
+	}
+
+	if len(value) < 2 {
+		return false, nil
+	}
+
+	return strings.ToLower(strings.TrimSpace(value))[0] == 'y', nil
 }
