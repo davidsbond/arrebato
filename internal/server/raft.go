@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 
 	transport "github.com/Jille/raft-grpc-transport"
@@ -411,16 +412,9 @@ func (svr *Server) pickNodeWithLeastTopics(ctx context.Context) (*nodepb.Node, e
 		return nil, err
 	}
 
-	var selected *nodepb.Node
-	for _, n := range nodes {
-		if len(n.GetTopics()) <= len(selected.GetTopics()) {
-			selected = n
-		}
-	}
+	sort.Slice(nodes, func(i, j int) bool {
+		return len(nodes[i].GetTopics()) < len(nodes[j].GetTopics())
+	})
 
-	if selected == nil {
-		selected = nodes[0]
-	}
-
-	return selected, nil
+	return nodes[0], nil
 }
