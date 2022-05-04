@@ -5,6 +5,7 @@ package topic
 import (
 	"context"
 	"errors"
+	"sort"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -13,6 +14,8 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/davidsbond/arrebato/internal/command"
+	nodecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/node/command/v1"
+	nodepb "github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
 	topiccmd "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/command/v1"
 	topicsvc "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/service/v1"
 	"github.com/davidsbond/arrebato/internal/proto/arrebato/topic/v1"
@@ -24,6 +27,7 @@ type (
 	GRPC struct {
 		executor Executor
 		querier  Querier
+		nodes    NodeLister
 	}
 
 	// The Executor interface describes types that execute commands related to Topic data.
@@ -44,12 +48,19 @@ type (
 		// incomplete topic data is found.
 		List(ctx context.Context) ([]*topic.Topic, error)
 	}
+
+	// The NodeLister interface describes types that can list nodes within the cluster.
+	NodeLister interface {
+		// List should return all node records in the state.
+		List(ctx context.Context) ([]*nodepb.Node, error)
+	}
 )
 
 // NewGRPC returns a new instance of the GRPC type that will modify Topic data via commands sent to the Executor and
-// query Topic data via the Querier implementation.
-func NewGRPC(executor Executor, querier Querier) *GRPC {
-	return &GRPC{executor: executor, querier: querier}
+// query Topic data via the Querier implementation. Node data for topic assignment will be obtained via the NodeLister
+// implementation.
+func NewGRPC(executor Executor, querier Querier, nodes NodeLister) *GRPC {
+	return &GRPC{executor: executor, querier: querier, nodes: nodes}
 }
 
 // Register the GRPC service onto the grpc.ServiceRegistrar.
@@ -58,7 +69,8 @@ func (svr *GRPC) Register(registrar grpc.ServiceRegistrar, health *health.Server
 	health.SetServingStatus(topicsvc.TopicService_ServiceDesc.ServiceName, grpc_health_v1.HealthCheckResponse_SERVING)
 }
 
-// Create a new Topic. Returns a codes.AlreadyExists code if the topic already exists.
+// Create a new Topic, assigning it to the node with the least number of assigned topics. Returns a codes.AlreadyExists
+// code if the topic already exists.
 func (svr *GRPC) Create(ctx context.Context, request *topicsvc.CreateRequest) (*topicsvc.CreateResponse, error) {
 	cmd := command.New(&topiccmd.CreateTopic{
 		Topic: request.GetTopic(),
@@ -72,9 +84,31 @@ func (svr *GRPC) Create(ctx context.Context, request *topicsvc.CreateRequest) (*
 		return nil, status.Errorf(codes.AlreadyExists, "topic %s already exists", request.GetTopic().GetName())
 	case err != nil:
 		return nil, status.Errorf(codes.Internal, "failed to create topic %s: %v", request.GetTopic().GetName(), err)
-	default:
-		return &topicsvc.CreateResponse{}, nil
 	}
+
+	nodes, err := svr.nodes.List(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list nodes: %v", err)
+	}
+
+	sort.Slice(nodes, func(i, j int) bool {
+		return len(nodes[i].GetTopics()) < len(nodes[j].GetTopics())
+	})
+
+	cmd = command.New(&nodecmd.AssignTopic{
+		TopicName: request.GetTopic().GetName(),
+		NodeName:  nodes[0].GetName(),
+	})
+
+	err = svr.executor.Execute(ctx, cmd)
+	switch {
+	case errors.Is(err, command.ErrNotLeader):
+		return nil, status.Error(codes.FailedPrecondition, "this node is not the leader")
+	case err != nil:
+		return nil, status.Errorf(codes.Internal, "failed to assign topic %s: %v", request.GetTopic().GetName(), err)
+	}
+
+	return &topicsvc.CreateResponse{}, nil
 }
 
 // Delete an existing Topic. Returns a codes.NotFound code if the topic does not exist.

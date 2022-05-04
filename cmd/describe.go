@@ -85,6 +85,7 @@ func describeNode() *cobra.Command {
 			fmt.Println("Leader:", node.Leader)
 			fmt.Println("Version:", node.Version)
 			fmt.Println("Peers:", len(node.Peers))
+			fmt.Println("Topics:", len(node.Topics))
 
 			return nil
 		}),

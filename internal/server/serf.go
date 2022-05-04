@@ -13,6 +13,11 @@ import (
 	"github.com/hashicorp/memberlist"
 	"github.com/hashicorp/raft"
 	"github.com/hashicorp/serf/serf"
+
+	"github.com/davidsbond/arrebato/internal/command"
+	"github.com/davidsbond/arrebato/internal/node"
+	nodecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/node/command/v1"
+	nodepb "github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
 )
 
 type (
@@ -196,6 +201,22 @@ func (svr *Server) handleSerfEventMemberJoin(ctx context.Context, event serf.Mem
 		case err != nil:
 			return fmt.Errorf("failed to add server: %w", err)
 		}
+
+		cmd := command.New(&nodecmd.AddNode{
+			Node: &nodepb.Node{
+				Name: member.Name,
+			},
+		})
+
+		err = svr.executor.Execute(ctx, cmd)
+		switch {
+		case errors.Is(err, raft.ErrLeadershipLost):
+			return nil
+		case errors.Is(err, node.ErrNodeExists):
+			continue
+		case err != nil:
+			return fmt.Errorf("failed to execute command: %w", err)
+		}
 	}
 
 	return nil
@@ -223,6 +244,22 @@ func (svr *Server) handleSerfEventMemberLeave(ctx context.Context, event serf.Me
 		case err != nil:
 			return fmt.Errorf("failed to remove existing server: %w", err)
 		}
+
+		cmd := command.New(&nodecmd.RemoveNode{
+			Name: member.Name,
+		})
+
+		err = svr.executor.Execute(ctx, cmd)
+		switch {
+		case errors.Is(err, raft.ErrLeadershipLost):
+			return nil
+		case err != nil:
+			return fmt.Errorf("failed to execute command: %w", err)
+		}
+	}
+
+	if svr.IsLeader() {
+		return svr.ensureTopicsAreAssigned(ctx)
 	}
 
 	return nil

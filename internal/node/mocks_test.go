@@ -1,32 +1,46 @@
 package node_test
 
-import "github.com/hashicorp/raft"
+import (
+	"context"
+
+	"github.com/hashicorp/raft"
+
+	"github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
+)
 
 type (
 	MockRaft struct {
-		state  raft.RaftState
-		config raft.Configuration
+		state raft.RaftState
 	}
 
-	MockConfigurationFuture struct {
-		raft.ConfigurationFuture
+	MockStore struct {
+		saved *node.Node
+		err   error
+	}
 
-		config raft.Configuration
+	MockLister struct {
+		nodes []*node.Node
+		err   error
 	}
 )
 
-func (mm *MockRaft) GetConfiguration() raft.ConfigurationFuture {
-	return &MockConfigurationFuture{config: mm.config}
+func (mm *MockLister) List(ctx context.Context) ([]*node.Node, error) {
+	return mm.nodes, mm.err
+}
+
+func (mm *MockStore) AssignTopic(ctx context.Context, nodeName, topicName string) error {
+	return mm.err
+}
+
+func (mm *MockStore) Create(ctx context.Context, n *node.Node) error {
+	mm.saved = n
+	return mm.err
+}
+
+func (mm *MockStore) Delete(ctx context.Context, name string) error {
+	return mm.err
 }
 
 func (mm *MockRaft) State() raft.RaftState {
 	return mm.state
-}
-
-func (mm *MockConfigurationFuture) Error() error {
-	return nil
-}
-
-func (mm *MockConfigurationFuture) Configuration() raft.Configuration {
-	return mm.config
 }

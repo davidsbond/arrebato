@@ -41,6 +41,7 @@ func (h *Handler) Create(ctx context.Context, cmd *topiccmd.CreateTopic) error {
 		"name", cmd.GetTopic().GetName(),
 		"message_retention_period", cmd.GetTopic().GetMessageRetentionPeriod().AsDuration(),
 		"consumer_retention_period", cmd.GetTopic().GetConsumerRetentionPeriod().AsDuration(),
+		"require_verified_messages", cmd.GetTopic().GetRequireVerifiedMessages(),
 	)
 
 	return nil

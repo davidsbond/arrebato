@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 
 	transport "github.com/Jille/raft-grpc-transport"
@@ -25,9 +26,12 @@ import (
 
 	"github.com/davidsbond/arrebato/internal/clientinfo"
 	"github.com/davidsbond/arrebato/internal/command"
+	"github.com/davidsbond/arrebato/internal/node"
 	aclcmd "github.com/davidsbond/arrebato/internal/proto/arrebato/acl/command/v1"
 	consumercmd "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/command/v1"
 	messagecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/message/command/v1"
+	nodecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/node/command/v1"
+	nodepb "github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
 	signingcmd "github.com/davidsbond/arrebato/internal/proto/arrebato/signing/command/v1"
 	topiccmd "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/command/v1"
 )
@@ -242,6 +246,12 @@ func (svr *Server) Apply(log *raft.Log) interface{} {
 		err = svr.aclHandler.Set(ctx, payload)
 	case *signingcmd.CreatePublicKey:
 		err = svr.signingHandler.Create(ctx, payload)
+	case *nodecmd.AddNode:
+		err = svr.nodeHandler.Add(ctx, payload)
+	case *nodecmd.RemoveNode:
+		err = svr.nodeHandler.Remove(ctx, payload)
+	case *nodecmd.AssignTopic:
+		err = svr.nodeHandler.AssignTopic(ctx, payload)
 	default:
 		break
 	}
@@ -295,4 +305,116 @@ func (svr *Server) lastAppliedIndex() (uint64, error) {
 // IsLeader returns true if this server instance is the cluster leader.
 func (svr *Server) IsLeader() bool {
 	return svr.raft.State() == raft.Leader
+}
+
+func (svr *Server) handleLeadershipChanges(ctx context.Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case isLeader := <-svr.raft.LeaderCh():
+			if !isLeader {
+				continue
+			}
+
+			if err := svr.ensureNodeRecord(ctx); err != nil {
+				return fmt.Errorf("failed to ensure node record is set: %w", err)
+			}
+
+			if err := svr.ensureTopicsAreAssigned(ctx); err != nil {
+				return fmt.Errorf("failed to ensure topics are allocated: %w", err)
+			}
+		}
+	}
+}
+
+func (svr *Server) ensureNodeRecord(ctx context.Context) error {
+	cmd := command.New(&nodecmd.AddNode{
+		Node: &nodepb.Node{
+			Name: svr.config.AdvertiseAddress,
+		},
+	})
+
+	err := svr.executor.Execute(ctx, cmd)
+	switch {
+	case errors.Is(err, raft.ErrLeadershipLost):
+		return nil
+	case errors.Is(err, node.ErrNodeExists):
+		return nil
+	case err != nil:
+		return fmt.Errorf("failed to execute command: %w", err)
+	default:
+		return nil
+	}
+}
+
+func (svr *Server) ensureTopicsAreAssigned(ctx context.Context) error {
+	nodes, err := svr.nodeStore.List(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to list nodes: %w", err)
+	}
+
+	nodeTopics := make(map[string]string)
+	for _, n := range nodes {
+		for _, t := range n.GetTopics() {
+			nodeTopics[t] = n.GetName()
+		}
+	}
+
+	topics, err := svr.topicStore.List(ctx)
+	switch {
+	case err != nil:
+		return fmt.Errorf("failed to list topics: %w", err)
+	case len(topics) == 0:
+		return nil
+	}
+
+	toAssign := make([]string, 0)
+	for _, t := range topics {
+		if _, ok := nodeTopics[t.GetName()]; ok {
+			continue
+		}
+
+		toAssign = append(toAssign, t.GetName())
+	}
+
+	if len(toAssign) == 0 {
+		return nil
+	}
+
+	svr.logger.Debug("reassigning topics", "count", len(toAssign))
+	for _, t := range toAssign {
+		n, err := svr.pickNodeWithLeastTopics(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to pick node with least topics: %w", err)
+		}
+
+		cmd := command.New(&nodecmd.AssignTopic{
+			TopicName: t,
+			NodeName:  n.GetName(),
+		})
+
+		err = svr.executor.Execute(ctx, cmd)
+		switch {
+		case errors.Is(err, raft.ErrLeadershipLost):
+			return nil
+		case err != nil:
+			return fmt.Errorf("failed to execute command: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (svr *Server) pickNodeWithLeastTopics(ctx context.Context) (*nodepb.Node, error) {
+	nodes, err := svr.nodeStore.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(nodes, func(i, j int) bool {
+		return len(nodes[i].GetTopics()) < len(nodes[j].GetTopics())
+	})
+
+	return nodes[0], nil
 }

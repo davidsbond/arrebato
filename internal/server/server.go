@@ -35,11 +35,12 @@ import (
 type (
 	// The Server type represents the entire arrebato node and stitches together the serf, raft & grpc configuration.
 	Server struct {
-		config  Config
-		logger  hclog.Logger
-		store   *bbolt.DB
-		restore chan struct{}
-		pruner  *prune.Pruner
+		config   Config
+		logger   hclog.Logger
+		store    *bbolt.DB
+		restore  chan struct{}
+		pruner   *prune.Pruner
+		executor *command.Executor
 
 		// Dependencies for Serf
 		serf       *serf.Serf
@@ -76,7 +77,9 @@ type (
 		signingGRPC    *signing.GRPC
 
 		// Dependencies for Nodes
-		nodeGRPC *node.GRPC
+		nodeStore   *node.BoltStore
+		nodeHandler *node.Handler
+		nodeGRPC    *node.GRPC
 	}
 
 	// The Config type contains configuration values for the Server.
@@ -155,45 +158,47 @@ func New(config Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to open storage: %w", err)
 	}
 
-	executor := command.NewExecutor(server.raft, config.Raft.Timeout)
+	info := node.Info{Name: config.AdvertiseAddress, Version: config.Version}
+	server.executor = command.NewExecutor(server.raft, config.Raft.Timeout)
 
 	// Node stack
-	info := node.Info{
-		LocalID: raft.ServerID(config.AdvertiseAddress),
-		Version: config.Version,
-	}
-	server.nodeGRPC = node.NewGRPC(server.raft, info, backup.NewBoltDB(server.store))
+
+	server.nodeStore = node.NewBoltStore(server.store)
+	server.nodeHandler = node.NewHandler(server.nodeStore, server.logger)
+	server.nodeGRPC = node.NewGRPC(server.raft, info, backup.NewBoltDB(server.store), server.nodeStore)
 
 	// ACL stack
 	server.aclStore = acl.NewBoltStore(server.store)
 	server.aclHandler = acl.NewHandler(server.aclStore, server.logger)
-	server.aclGRPC = acl.NewGRPC(executor, server.aclStore)
+	server.aclGRPC = acl.NewGRPC(server.executor, server.aclStore)
 
 	// Topic stack
 	server.topicStore = topic.NewBoltStore(server.store)
 	server.topicHandler = topic.NewHandler(server.topicStore, server.logger)
-	server.topicGRPC = topic.NewGRPC(executor, server.topicStore)
+	server.topicGRPC = topic.NewGRPC(server.executor, server.topicStore, server.nodeStore)
 
 	// Consumer stack
 	server.consumerStore = consumer.NewBoltStore(server.store)
 	server.consumerHandler = consumer.NewHandler(server.consumerStore, server.logger)
-	server.consumerGRPC = consumer.NewGRPC(executor)
+	server.consumerGRPC = consumer.NewGRPC(server.executor)
 
 	// Signing stack
 	server.signingStore = signing.NewBoltStore(server.store)
 	server.signingHandler = signing.NewHandler(server.signingStore, server.logger)
-	server.signingGRPC = signing.NewGRPC(executor, server.signingStore)
+	server.signingGRPC = signing.NewGRPC(server.executor, server.signingStore)
 
 	// Message stack
 	server.messageStore = message.NewBoltStore(server.store)
 	server.messageHandler = message.NewHandler(server.messageStore, server.logger)
 	server.messageGRPC = message.NewGRPC(
-		executor,
+		info.Name,
+		server.executor,
 		server.messageStore,
 		server.consumerStore,
 		server.aclStore,
 		server.signingStore,
 		server.topicStore,
+		server.nodeStore,
 	)
 
 	// Pruning stack
@@ -242,6 +247,10 @@ func (svr *Server) Start(ctx context.Context) error {
 	grp, ctx := errgroup.WithContext(ctx)
 	grp.Go(func() error {
 		return svr.handleSerfEvents(ctx)
+	})
+
+	grp.Go(func() error {
+		return svr.handleLeadershipChanges(ctx)
 	})
 
 	grp.Go(func() error {

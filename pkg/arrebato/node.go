@@ -3,6 +3,7 @@ package arrebato
 import (
 	"context"
 	"errors"
+	"sort"
 
 	"google.golang.org/grpc"
 
@@ -20,6 +21,8 @@ type (
 		Version string `json:"version"`
 		// Peers known to the node
 		Peers []string `json:"peers"`
+		// Topics assigned to the node
+		Topics []string `json:"topics"`
 	}
 )
 
@@ -37,9 +40,14 @@ func (c *Client) Nodes(ctx context.Context) ([]Node, error) {
 			Leader:  resp.GetNode().GetLeader(),
 			Version: resp.GetNode().GetVersion(),
 			Peers:   resp.GetNode().GetPeers(),
+			Topics:  resp.GetNode().GetTopics(),
 		})
 
 		return nil
+	})
+
+	sort.Slice(nodes, func(i, j int) bool {
+		return nodes[i].Name < nodes[j].Name
 	})
 
 	return nodes, err
@@ -65,5 +73,6 @@ func (c *Client) Node(ctx context.Context, name string) (Node, error) {
 		Leader:  resp.GetNode().GetLeader(),
 		Version: resp.GetNode().GetVersion(),
 		Peers:   resp.GetNode().GetPeers(),
+		Topics:  resp.GetNode().GetTopics(),
 	}, nil
 }

@@ -18,11 +18,13 @@ import (
 	"github.com/davidsbond/arrebato/internal/clientinfo"
 	"github.com/davidsbond/arrebato/internal/command"
 	"github.com/davidsbond/arrebato/internal/consumer"
+	"github.com/davidsbond/arrebato/internal/node"
 	"github.com/davidsbond/arrebato/internal/proto/arrebato/acl/v1"
 	consumerpb "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/v1"
 	messagecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/message/command/v1"
 	messagesvc "github.com/davidsbond/arrebato/internal/proto/arrebato/message/service/v1"
 	"github.com/davidsbond/arrebato/internal/proto/arrebato/message/v1"
+	nodepb "github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
 	topicpb "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/v1"
 	"github.com/davidsbond/arrebato/internal/signing"
 	"github.com/davidsbond/arrebato/internal/topic"
@@ -32,12 +34,14 @@ type (
 	// The GRPC type is a messagesvc.MessageServiceServer implementation that handles inbound gRPC requests to manage
 	// and query Messages.
 	GRPC struct {
-		executor   Executor
-		reader     Reader
-		consumers  TopicIndexGetter
-		publicKeys PublicKeyGetter
-		topics     TopicGetter
-		acl        ACL
+		nodeName    string
+		executor    Executor
+		reader      Reader
+		consumers   TopicIndexGetter
+		publicKeys  PublicKeyGetter
+		topics      TopicGetter
+		topicOwners TopicOwnerGetter
+		acl         ACL
 	}
 
 	// The Executor interface describes types that execute commands related to Message data.
@@ -81,20 +85,38 @@ type (
 		// Get should return the named topic. It should return topic.ErrNoTopic if the topic does not exist.
 		Get(ctx context.Context, name string) (*topicpb.Topic, error)
 	}
+
+	// The TopicOwnerGetter interface describes types that can query which node owns a topic.
+	TopicOwnerGetter interface {
+		// GetTopicOwner should return a node that is assigned to a given topic. Or return node.ErrNoNode if an owner
+		// cannot be found for the given topic.
+		GetTopicOwner(ctx context.Context, topicName string) (*nodepb.Node, error)
+	}
 )
 
 // NewGRPC returns a new instance of the GRPC type that will modify Message data via commands sent to the Executor and
 // read messages via the Reader implementation. The index of consumers will be obtained via the TopicIndexGetter implementation,
 // permissions will be checked using the ACL implementation, topic details will be obtained via the TopicGetter implementation
 // and client's public signing keys are obtained via the PublicKeyGetter implementation.
-func NewGRPC(executor Executor, reader Reader, consumers TopicIndexGetter, acl ACL, publicKeys PublicKeyGetter, topics TopicGetter) *GRPC {
+func NewGRPC(
+	nodeName string,
+	executor Executor,
+	reader Reader,
+	consumers TopicIndexGetter,
+	acl ACL,
+	publicKeys PublicKeyGetter,
+	topics TopicGetter,
+	owners TopicOwnerGetter,
+) *GRPC {
 	return &GRPC{
-		executor:   executor,
-		reader:     reader,
-		consumers:  consumers,
-		acl:        acl,
-		publicKeys: publicKeys,
-		topics:     topics,
+		nodeName:    nodeName,
+		executor:    executor,
+		reader:      reader,
+		consumers:   consumers,
+		acl:         acl,
+		publicKeys:  publicKeys,
+		topics:      topics,
+		topicOwners: owners,
 	}
 }
 
@@ -164,10 +186,22 @@ func (svr *GRPC) Produce(ctx context.Context, request *messagesvc.ProduceRequest
 	}
 }
 
-// Consume messages from a topic. Returns a codes.NotFound code if the topic does not exist.
+// Consume messages from a topic. Returns a codes.NotFound code if the topic does not exist. In order to be allowed
+// to consume the desired topic, the client must be given permission by the ACL, and must be calling the server that
+// is assigned the desired topic.
 func (svr *GRPC) Consume(request *messagesvc.ConsumeRequest, server messagesvc.MessageService_ConsumeServer) error {
 	ctx := server.Context()
 	info := clientinfo.FromContext(ctx)
+
+	assigned, err := svr.isAssignedToTopic(ctx, request.GetTopic())
+	switch {
+	case errors.Is(err, node.ErrNoNode):
+		return status.Errorf(codes.NotFound, "no owner was found for topic %s", request.GetTopic())
+	case err != nil:
+		return status.Errorf(codes.Internal, "failed to check topic assignments: %v", err)
+	case !assigned:
+		return status.Error(codes.PermissionDenied, "topics must be consumed via their assigned node")
+	}
 
 	allowed, err := svr.canConsume(ctx, info, request.GetTopic())
 	switch {
@@ -255,4 +289,13 @@ func (svr *GRPC) verifySignature(ctx context.Context, clientInfo clientinfo.Clie
 	}
 
 	return signing.Verify(msg.GetSender().GetKeySignature(), publicKey), nil
+}
+
+func (svr *GRPC) isAssignedToTopic(ctx context.Context, topicName string) (bool, error) {
+	owner, err := svr.topicOwners.GetTopicOwner(ctx, topicName)
+	if err != nil {
+		return false, fmt.Errorf("failed to find topic owner: %w", err)
+	}
+
+	return owner.GetName() == svr.nodeName, nil
 }
