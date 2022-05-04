@@ -115,16 +115,21 @@ func TestGRPC_Delete(t *testing.T) {
 		Request      *topicsvc.DeleteRequest
 		ExpectedCode codes.Code
 		Error        error
-		Expected     command.Command
+		Expected     []command.Command
 	}{
 		{
 			Name: "It should execute a command to delete a topic",
 			Request: &topicsvc.DeleteRequest{
 				Name: "test-topic",
 			},
-			Expected: command.New(&topiccmd.DeleteTopic{
-				Name: "test-topic",
-			}),
+			Expected: []command.Command{
+				command.New(&topiccmd.DeleteTopic{
+					Name: "test-topic",
+				}),
+				command.New(&nodecmd.UnassignTopic{
+					Name: "test-topic",
+				}),
+			},
 		},
 		{
 			Name: "It should return a failed precondition if the node is not the leader",
@@ -158,10 +163,12 @@ func TestGRPC_Delete(t *testing.T) {
 				return
 			}
 
-			require.Len(t, executor.commands, 1)
-			expected := tc.Expected.Payload().(*topiccmd.DeleteTopic)
-			actual := executor.commands[0].Payload().(*topiccmd.DeleteTopic)
-			assert.EqualValues(t, expected.GetName(), actual.GetName())
+			require.Len(t, executor.commands, 2)
+			for i, expected := range tc.Expected {
+				actual := executor.commands[i]
+
+				assert.True(t, proto.Equal(expected.Payload(), actual.Payload()))
+			}
 		})
 	}
 }

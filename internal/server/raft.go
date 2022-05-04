@@ -252,6 +252,8 @@ func (svr *Server) Apply(log *raft.Log) interface{} {
 		err = svr.nodeHandler.Remove(ctx, payload)
 	case *nodecmd.AssignTopic:
 		err = svr.nodeHandler.AssignTopic(ctx, payload)
+	case *nodecmd.UnassignTopic:
+		err = svr.nodeHandler.UnassignTopic(ctx, payload)
 	default:
 		break
 	}

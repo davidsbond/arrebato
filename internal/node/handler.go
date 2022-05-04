@@ -22,6 +22,7 @@ type (
 		Create(ctx context.Context, n *node.Node) error
 		Delete(ctx context.Context, name string) error
 		AssignTopic(ctx context.Context, nodeName, topicName string) error
+		UnassignTopic(ctx context.Context, topicName string) error
 	}
 )
 
@@ -60,5 +61,15 @@ func (h *Handler) AssignTopic(ctx context.Context, payload *nodecmd.AssignTopic)
 	}
 
 	h.logger.Debug("assigned topic", "node_name", payload.GetNodeName(), "topic_name", payload.GetTopicName())
+	return nil
+}
+
+// UnassignTopic unassigns a topic from any nodes it may be assigned to.
+func (h *Handler) UnassignTopic(ctx context.Context, payload *nodecmd.UnassignTopic) error {
+	if err := h.nodes.UnassignTopic(ctx, payload.GetName()); err != nil {
+		return fmt.Errorf("failed to handle command: %w", err)
+	}
+
+	h.logger.Debug("unassigned topic", "topic_name", payload.GetName())
 	return nil
 }

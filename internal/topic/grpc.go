@@ -111,7 +111,8 @@ func (svr *GRPC) Create(ctx context.Context, request *topicsvc.CreateRequest) (*
 	return &topicsvc.CreateResponse{}, nil
 }
 
-// Delete an existing Topic. Returns a codes.NotFound code if the topic does not exist.
+// Delete an existing Topic. Returns a codes.NotFound code if the topic does not exist. Once deleted, the topic will
+// be unassigned from any nodes.
 func (svr *GRPC) Delete(ctx context.Context, request *topicsvc.DeleteRequest) (*topicsvc.DeleteResponse, error) {
 	cmd := command.New(&topiccmd.DeleteTopic{
 		Name: request.GetName(),
@@ -125,9 +126,21 @@ func (svr *GRPC) Delete(ctx context.Context, request *topicsvc.DeleteRequest) (*
 		return nil, status.Errorf(codes.NotFound, "topic %s does not exist", request.GetName())
 	case err != nil:
 		return nil, status.Errorf(codes.Internal, "failed to delete topic %s: %v", request.GetName(), err)
-	default:
-		return &topicsvc.DeleteResponse{}, nil
 	}
+
+	cmd = command.New(&nodecmd.UnassignTopic{
+		Name: request.GetName(),
+	})
+
+	err = svr.executor.Execute(ctx, cmd)
+	switch {
+	case errors.Is(err, command.ErrNotLeader):
+		return nil, status.Error(codes.FailedPrecondition, "this node is not the leader")
+	case err != nil:
+		return nil, status.Errorf(codes.Internal, "failed to unassign topic %s: %v", request.GetName(), err)
+	}
+
+	return &topicsvc.DeleteResponse{}, nil
 }
 
 // Get a topic by name. Returns a codes.NotFound code if the topic does not exist, or a codes.InvalidArgument code

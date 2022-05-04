@@ -184,3 +184,41 @@ func (bs *BoltStore) GetTopicOwner(ctx context.Context, topicName string) (*node
 
 	return nil, ErrNoNode
 }
+
+// UnassignTopic checks each node record for the presence of a topic. If the topic is found assigned to the node
+// it is removed from the list.
+func (bs *BoltStore) UnassignTopic(ctx context.Context, topicName string) error {
+	return bs.db.Update(func(tx *bbolt.Tx) error {
+		bucket, err := tx.CreateBucketIfNotExists([]byte(nodeKey))
+		if err != nil {
+			return fmt.Errorf("failed to open node bucket: %w", err)
+		}
+
+		return bucket.ForEach(func(k, v []byte) error {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+
+			var n node.Node
+			if err = proto.Unmarshal(v, &n); err != nil {
+				return fmt.Errorf("failed to unmarshal node: %w", err)
+			}
+
+			for i, tp := range n.GetTopics() {
+				if tp != topicName {
+					continue
+				}
+
+				n.Topics = append(n.Topics[:i], n.Topics[i+1:]...)
+				value, err := proto.Marshal(&n)
+				if err != nil {
+					return fmt.Errorf("failed to marshal node: %w", err)
+				}
+
+				return bucket.Put([]byte(n.GetName()), value)
+			}
+
+			return nil
+		})
+	})
+}
