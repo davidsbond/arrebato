@@ -26,7 +26,7 @@ spec:
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/path: /metrics
-        prometheus.io/port: "5003"
+        prometheus.io/port: "5002"
     spec:
       affinity:
         podAntiAffinity:
