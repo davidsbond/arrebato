@@ -98,3 +98,36 @@ func TestBoltStore_AssignTopic(t *testing.T) {
 		}
 	})
 }
+
+func TestBoltStore_GetTopicOwner(t *testing.T) {
+	t.Parallel()
+
+	ctx := testutil.Context(t)
+	db := testutil.BoltDB(t)
+	store := node.NewBoltStore(db)
+
+	// Create some nodes to assign topics to
+	require.NoError(t, store.Create(ctx, &nodepb.Node{
+		Name: "node-0",
+	}))
+	require.NoError(t, store.Create(ctx, &nodepb.Node{
+		Name: "node-1",
+	}))
+
+	// Assign a topic to a node
+	const topicName = "topic-0"
+	const nodeName = "node-0"
+	require.NoError(t, store.AssignTopic(ctx, nodeName, topicName))
+
+	t.Run("It should return the node assigned to the topic", func(t *testing.T) {
+		result, err := store.GetTopicOwner(ctx, topicName)
+		require.NoError(t, err)
+		assert.EqualValues(t, nodeName, result.GetName())
+	})
+
+	t.Run("It should return an error if a node cannot be found for a topic", func(t *testing.T) {
+		result, err := store.GetTopicOwner(ctx, "aaaaaaaaa")
+		assert.Error(t, err)
+		assert.Nil(t, result)
+	})
+}

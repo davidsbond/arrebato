@@ -35,7 +35,12 @@ type (
 // NewConsumer returns a new instance of the Consumer type configured to read from a desired topic as a desired
 // consumer identifier.
 func (c *Client) NewConsumer(ctx context.Context, config ConsumerConfig) (*Consumer, error) {
-	svc := messagesvc.NewMessageServiceClient(c.cluster.any())
+	conn, err := c.cluster.topicOwner(ctx, config.Topic)
+	if err != nil {
+		return nil, err
+	}
+
+	svc := messagesvc.NewMessageServiceClient(conn)
 	stream, err := svc.Consume(ctx, &messagesvc.ConsumeRequest{
 		Topic:      config.Topic,
 		ConsumerId: config.ConsumerID,

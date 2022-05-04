@@ -9,6 +9,7 @@ import (
 	consumerpb "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/v1"
 	messagesvc "github.com/davidsbond/arrebato/internal/proto/arrebato/message/service/v1"
 	messabepb "github.com/davidsbond/arrebato/internal/proto/arrebato/message/v1"
+	nodepb "github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
 	topicpb "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/v1"
 )
 
@@ -50,7 +51,15 @@ type (
 	MockTopicGetter struct {
 		topic *topicpb.Topic
 	}
+
+	MockTopicOwnerGetter struct {
+		owner *nodepb.Node
+	}
 )
+
+func (mm *MockTopicOwnerGetter) GetTopicOwner(ctx context.Context, topicName string) (*nodepb.Node, error) {
+	return mm.owner, nil
+}
 
 func (mm *MockTopicGetter) Get(ctx context.Context, name string) (*topicpb.Topic, error) {
 	return mm.topic, nil

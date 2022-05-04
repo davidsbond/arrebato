@@ -60,6 +60,38 @@ func (c *cluster) named(name string) (*grpc.ClientConn, bool) {
 	return conn, ok
 }
 
+func (c *cluster) topicOwner(ctx context.Context, topic string) (*grpc.ClientConn, error) {
+	var selected *grpc.ClientConn
+	err := c.forEach(ctx, func(conn *grpc.ClientConn) error {
+		if selected != nil {
+			return nil
+		}
+
+		n, err := nodesvc.NewNodeServiceClient(conn).Describe(ctx, &nodesvc.DescribeRequest{})
+		if err != nil {
+			return err
+		}
+
+		for _, tp := range n.GetNode().GetTopics() {
+			if tp == topic {
+				selected = conn
+				return nil
+			}
+		}
+
+		return nil
+	})
+
+	switch {
+	case err != nil:
+		return nil, err
+	case selected == nil:
+		return nil, ErrNoTopic
+	default:
+		return selected, nil
+	}
+}
+
 func (c *cluster) findLeader(ctx context.Context) {
 	c.mux.Lock()
 	defer c.mux.Unlock()

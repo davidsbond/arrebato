@@ -153,3 +153,34 @@ func (bs *BoltStore) AssignTopic(ctx context.Context, nodeName string, topicName
 		})
 	})
 }
+
+// ErrNoNode is the error given when querying a node that does not exist, or when querying a topic's owner and none
+// is found.
+var ErrNoNode = errors.New("no node")
+
+// GetTopicOwner returns the node that is assigned to the provided topic. Returns ErrNoNode if a node cannot be
+// found that owns the topic.
+func (bs *BoltStore) GetTopicOwner(ctx context.Context, topicName string) (*node.Node, error) {
+	nodes, err := bs.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, n := range nodes {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+
+		for _, t := range n.GetTopics() {
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
+
+			if t == topicName {
+				return n, nil
+			}
+		}
+	}
+
+	return nil, ErrNoNode
+}

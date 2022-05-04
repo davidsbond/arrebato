@@ -16,6 +16,7 @@ import (
 	messagecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/message/command/v1"
 	messagesvc "github.com/davidsbond/arrebato/internal/proto/arrebato/message/service/v1"
 	messagepb "github.com/davidsbond/arrebato/internal/proto/arrebato/message/v1"
+	nodepb "github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
 	topicpb "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/v1"
 	"github.com/davidsbond/arrebato/internal/testutil"
 )
@@ -106,12 +107,14 @@ func TestGRPC_Produce(t *testing.T) {
 			topics := &MockTopicGetter{topic: &topicpb.Topic{RequireVerifiedMessages: tc.RequireVerified}}
 
 			svc := message.NewGRPC(
+				"",
 				executor,
 				nil,
 				nil,
 				&MockACL{allowed: tc.ACLAllow},
 				publicKeys,
 				topics,
+				nil,
 			)
 
 			resp, err := svc.Produce(ctx, tc.Request)
@@ -141,6 +144,8 @@ func TestGRPC_Consume(t *testing.T) {
 		Name         string
 		Request      *messagesvc.ConsumeRequest
 		ACLAllow     bool
+		TopicOwner   *nodepb.Node
+		NodeName     string
 		SeedTopic    []*messagepb.Message
 		ExpectedCode codes.Code
 		Expected     []*messagepb.Message
@@ -149,6 +154,10 @@ func TestGRPC_Consume(t *testing.T) {
 		{
 			Name:     "It should consume events from a valid topic",
 			ACLAllow: true,
+			NodeName: "test",
+			TopicOwner: &nodepb.Node{
+				Name: "test",
+			},
 			Request: &messagesvc.ConsumeRequest{
 				Topic:      "test-topic",
 				ConsumerId: "test-consumer",
@@ -162,8 +171,25 @@ func TestGRPC_Consume(t *testing.T) {
 			ExpectedCode: codes.DeadlineExceeded,
 		},
 		{
+			Name:     "It should return permission denied if this node is not the topic owner",
+			ACLAllow: true,
+			NodeName: "test",
+			TopicOwner: &nodepb.Node{
+				Name: "test-1",
+			},
+			Request: &messagesvc.ConsumeRequest{
+				Topic:      "test-topic",
+				ConsumerId: "test-consumer",
+			},
+			ExpectedCode: codes.PermissionDenied,
+		},
+		{
 			Name:     "It should return not found if the topic does not exist",
 			ACLAllow: true,
+			NodeName: "test",
+			TopicOwner: &nodepb.Node{
+				Name: "test",
+			},
 			Request: &messagesvc.ConsumeRequest{
 				Topic:      "test-topic",
 				ConsumerId: "test-consumer",
@@ -172,7 +198,11 @@ func TestGRPC_Consume(t *testing.T) {
 			ExpectedCode: codes.NotFound,
 		},
 		{
-			Name: "It should return permission denied if the ACL does not allow consuming",
+			Name:     "It should return permission denied if the ACL does not allow consuming",
+			NodeName: "test",
+			TopicOwner: &nodepb.Node{
+				Name: "test",
+			},
 			Request: &messagesvc.ConsumeRequest{
 				Topic:      "test-topic",
 				ConsumerId: "test-consumer",
@@ -190,8 +220,19 @@ func TestGRPC_Consume(t *testing.T) {
 			stream := &MockMessageConsumeServer{ctx: ctx}
 			reader := &MockReader{messages: tc.SeedTopic, err: tc.Error}
 			consumers := &MockTopicIndexGetter{}
+			owner := &MockTopicOwnerGetter{owner: tc.TopicOwner}
 
-			err := message.NewGRPC(nil, reader, consumers, &MockACL{allowed: tc.ACLAllow}, nil, nil).Consume(tc.Request, stream)
+			svc := message.NewGRPC(
+				tc.NodeName,
+				nil,
+				reader,
+				consumers,
+				&MockACL{allowed: tc.ACLAllow},
+				nil,
+				nil,
+				owner)
+
+			err := svc.Consume(tc.Request, stream)
 			require.EqualValues(t, tc.ExpectedCode, status.Code(err))
 
 			if tc.Error != nil || tc.ExpectedCode > codes.OK {

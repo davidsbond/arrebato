@@ -158,10 +158,11 @@ func New(config Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to open storage: %w", err)
 	}
 
+	info := node.Info{Name: config.AdvertiseAddress, Version: config.Version}
 	server.executor = command.NewExecutor(server.raft, config.Raft.Timeout)
 
 	// Node stack
-	info := node.Info{Name: config.AdvertiseAddress, Version: config.Version}
+
 	server.nodeStore = node.NewBoltStore(server.store)
 	server.nodeHandler = node.NewHandler(server.nodeStore, server.logger)
 	server.nodeGRPC = node.NewGRPC(server.raft, info, backup.NewBoltDB(server.store), server.nodeStore)
@@ -190,12 +191,14 @@ func New(config Config) (*Server, error) {
 	server.messageStore = message.NewBoltStore(server.store)
 	server.messageHandler = message.NewHandler(server.messageStore, server.logger)
 	server.messageGRPC = message.NewGRPC(
+		info.Name,
 		server.executor,
 		server.messageStore,
 		server.consumerStore,
 		server.aclStore,
 		server.signingStore,
 		server.topicStore,
+		server.nodeStore,
 	)
 
 	// Pruning stack
