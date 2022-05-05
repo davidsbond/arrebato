@@ -24,6 +24,10 @@ type (
 	}
 )
 
+func (mm *MockStore) UnassignTopic(ctx context.Context, topicName string) error {
+	return mm.err
+}
+
 func (mm *MockLister) List(ctx context.Context) ([]*node.Node, error) {
 	return mm.nodes, mm.err
 }

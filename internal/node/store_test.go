@@ -131,3 +131,27 @@ func TestBoltStore_GetTopicOwner(t *testing.T) {
 		assert.Nil(t, result)
 	})
 }
+
+func TestBoltStore_UnassignTopic(t *testing.T) {
+	t.Parallel()
+
+	ctx := testutil.Context(t)
+	db := testutil.BoltDB(t)
+	store := node.NewBoltStore(db)
+
+	// Create a node to assign topics to
+	require.NoError(t, store.Create(ctx, &nodepb.Node{
+		Name: "node-0",
+	}))
+
+	// Assign a topic to a node
+	const topicName = "topic-0"
+	const nodeName = "node-0"
+	require.NoError(t, store.AssignTopic(ctx, nodeName, topicName))
+
+	t.Run("It should unassign a topic from a node", func(t *testing.T) {
+		require.NoError(t, store.UnassignTopic(ctx, topicName))
+		_, err := store.GetTopicOwner(ctx, topicName)
+		assert.Error(t, err)
+	})
+}
