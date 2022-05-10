@@ -11,7 +11,7 @@ import (
 )
 
 // NewKeyPair generates a new public/private key pair for message signing.
-func NewKeyPair() (public []byte, private []byte, err error) {
+func NewKeyPair() ([]byte, []byte, error) {
 	pu, pb, err := sign.GenerateKey(rand.Reader)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to generate key: %w", err)

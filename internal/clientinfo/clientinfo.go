@@ -50,7 +50,7 @@ func ToContext(ctx context.Context, info ClientInfo) context.Context {
 // UnaryServerInterceptor is a grpc.UnaryServerInterceptor implementation that adds a ClientInfo to inbound contexts
 // via the provided Extractor implementation.
 func UnaryServerInterceptor(fn Extractor) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		clientInfo, err := fn(ctx)
 		if err != nil {
 			return nil, err
