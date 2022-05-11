@@ -7,16 +7,17 @@ import (
 
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+
+	"github.com/davidsbond/arrebato/internal/clientinfo"
 
 	// Enable gzip compression from gRPC clients.
 	_ "google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
-
-	"github.com/davidsbond/arrebato/internal/clientinfo"
 )
 
 type (
@@ -49,13 +50,15 @@ func (svr *Server) serveGRPC(ctx context.Context) error {
 
 	options = append(options,
 		grpc.ChainUnaryInterceptor(
-			grpc_prometheus.UnaryServerInterceptor,
 			grpc_recovery.UnaryServerInterceptor(),
+			otelgrpc.UnaryServerInterceptor(),
+			grpc_prometheus.UnaryServerInterceptor,
 			clientinfo.UnaryServerInterceptor(infoExtractor),
 		),
 		grpc.ChainStreamInterceptor(
-			grpc_prometheus.StreamServerInterceptor,
 			grpc_recovery.StreamServerInterceptor(),
+			otelgrpc.StreamServerInterceptor(),
+			grpc_prometheus.StreamServerInterceptor,
 			clientinfo.StreamServerInterceptor(infoExtractor),
 		),
 	)

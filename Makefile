@@ -16,11 +16,6 @@ proto-breaking:
 proto-format:
 	buf format -w
 
-docker-compose: build
-	docker-compose down
-	docker-compose build
-	docker-compose up
-
 test:
 	go test -race -short ./...
 

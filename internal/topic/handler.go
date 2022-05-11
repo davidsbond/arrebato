@@ -5,9 +5,12 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-hclog"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	topiccmd "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/command/v1"
 	"github.com/davidsbond/arrebato/internal/proto/arrebato/topic/v1"
+	"github.com/davidsbond/arrebato/internal/tracing"
 )
 
 type (
@@ -33,26 +36,38 @@ func NewHandler(manager Manager, logger hclog.Logger) *Handler {
 
 // Create the topic described in the command.
 func (h *Handler) Create(ctx context.Context, cmd *topiccmd.CreateTopic) error {
-	if err := h.topics.Create(ctx, cmd.GetTopic()); err != nil {
-		return fmt.Errorf("failed to create topic %s: %w", cmd.GetTopic().GetName(), err)
-	}
+	return tracing.WithinSpan(ctx, "Topic.Create", func(ctx context.Context, span trace.Span) error {
+		span.SetAttributes(
+			attribute.String("topic.name", cmd.GetTopic().GetName()),
+		)
 
-	h.logger.Debug("topic created",
-		"name", cmd.GetTopic().GetName(),
-		"message_retention_period", cmd.GetTopic().GetMessageRetentionPeriod().AsDuration(),
-		"consumer_retention_period", cmd.GetTopic().GetConsumerRetentionPeriod().AsDuration(),
-		"require_verified_messages", cmd.GetTopic().GetRequireVerifiedMessages(),
-	)
+		if err := h.topics.Create(ctx, cmd.GetTopic()); err != nil {
+			return fmt.Errorf("failed to create topic %s: %w", cmd.GetTopic().GetName(), err)
+		}
 
-	return nil
+		h.logger.Debug("topic created",
+			"name", cmd.GetTopic().GetName(),
+			"message_retention_period", cmd.GetTopic().GetMessageRetentionPeriod().AsDuration(),
+			"consumer_retention_period", cmd.GetTopic().GetConsumerRetentionPeriod().AsDuration(),
+			"require_verified_messages", cmd.GetTopic().GetRequireVerifiedMessages(),
+		)
+
+		return nil
+	})
 }
 
 // Delete the topic described in the command.
 func (h *Handler) Delete(ctx context.Context, cmd *topiccmd.DeleteTopic) error {
-	if err := h.topics.Delete(ctx, cmd.GetName()); err != nil {
-		return fmt.Errorf("failed to delete topic %s: %w", cmd.GetName(), err)
-	}
+	return tracing.WithinSpan(ctx, "Topic.Delete", func(ctx context.Context, span trace.Span) error {
+		span.SetAttributes(
+			attribute.String("topic.name", cmd.GetName()),
+		)
 
-	h.logger.Debug("topic deleted", "name", cmd.GetName())
-	return nil
+		if err := h.topics.Delete(ctx, cmd.GetName()); err != nil {
+			return fmt.Errorf("failed to delete topic %s: %w", cmd.GetName(), err)
+		}
+
+		h.logger.Debug("topic deleted", "name", cmd.GetName())
+		return nil
+	})
 }

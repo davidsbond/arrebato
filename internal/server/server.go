@@ -111,6 +111,7 @@ type (
 		GRPC    GRPCConfig
 		TLS     TLSConfig
 		Metrics MetricConfig
+		Tracing TracingConfig
 	}
 )
 
@@ -244,6 +245,11 @@ var ErrReload = errors.New("server has requested to reload from snapshot")
 
 // Start the server. This method blocks until an error occurs or the provided context is cancelled.
 func (svr *Server) Start(ctx context.Context) error {
+	tracer, err := setupTracing(ctx, svr.config)
+	if err != nil {
+		return fmt.Errorf("failed to setup tracing: %w", err)
+	}
+
 	grp, ctx := errgroup.WithContext(ctx)
 	grp.Go(func() error {
 		return svr.handleSerfEvents(ctx)
@@ -285,6 +291,8 @@ func (svr *Server) Start(ctx context.Context) error {
 			svr.serf.Shutdown(),
 			// Close and sync the state store
 			svr.store.Close(),
+			// Stop exporting spans
+			tracer.Close(),
 		).ErrorOrNil()
 	})
 
@@ -297,7 +305,7 @@ func (svr *Server) Start(ctx context.Context) error {
 		}
 	})
 
-	err := grp.Wait()
+	err = grp.Wait()
 	switch {
 	case errors.Is(err, http.ErrServerClosed), errors.Is(err, grpc.ErrServerStopped), errors.Is(err, raft.ErrRaftShutdown):
 		return context.Canceled

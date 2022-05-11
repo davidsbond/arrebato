@@ -14,6 +14,19 @@ import (
 func Server(version string) *cobra.Command {
 	config := server.Config{
 		Version: version,
+		Raft: server.RaftConfig{
+			Timeout:      time.Minute,
+			MaxSnapshots: 3,
+		},
+		Metrics: server.MetricConfig{
+			Port: 5002,
+		},
+		GRPC: server.GRPCConfig{
+			Port: 5000,
+		},
+		Serf: server.SerfConfig{
+			Port: 5001,
+		},
 	}
 
 	cmd := &cobra.Command{
@@ -47,15 +60,9 @@ func Server(version string) *cobra.Command {
 	flags.DurationVar(&config.PruneInterval, "prune-interval", time.Minute, "The amount of time between message pruning runs")
 
 	// Raft configuration
-	flags.DurationVar(&config.Raft.Timeout, "raft-timeout", time.Minute, "The timeout to use for raft transport")
-	flags.IntVar(&config.Raft.MaxSnapshots, "raft-max-snapshots", 3, "The maximum number of raft snapshots to store")
-	flags.BoolVar(&config.Raft.NonVoter, "raft-non-voter", false, "If true, this server will never obtain leadership and will be a read-only replica")
-
-	// gRPC configuration
-	flags.IntVar(&config.GRPC.Port, "grpc-port", 5000, "The port to use for gRPC transport")
+	flags.BoolVar(&config.Raft.NonVoter, "read-only", false, "If true, this server will never obtain leadership and will be a read-only replica")
 
 	// Serf configuration
-	flags.IntVar(&config.Serf.Port, "serf-port", 5001, "The port to use for serf transport")
 	flags.StringVar(&config.Serf.EncryptionKeyFile, "serf-encryption-key", "", "The path to the encryption key file used for serf transport")
 
 	// TLS configuration
@@ -63,8 +70,9 @@ func Server(version string) *cobra.Command {
 	flags.StringVar(&config.TLS.KeyFile, "tls-key", "", "The location of the TLS key file for the server to use")
 	flags.StringVar(&config.TLS.CAFile, "tls-ca", "", "The location of the CA certificate that signs client certificates")
 
-	// Prometheus configuration
-	flags.IntVar(&config.Metrics.Port, "metrics-port", 5002, "The port to use for serving metrics")
+	// Tracing configuration
+	flags.BoolVar(&config.Tracing.Enabled, "tracing-enabled", false, "If true, enables OpenTelemetry span collection")
+	flags.StringVar(&config.Tracing.Endpoint, "tracing-endpoint", "", "The HTTP(s) endpoint for the OpenTelemetry collector")
 
 	return cmd
 }

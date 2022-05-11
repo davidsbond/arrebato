@@ -5,8 +5,11 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-hclog"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	signingcmd "github.com/davidsbond/arrebato/internal/proto/arrebato/signing/command/v1"
+	"github.com/davidsbond/arrebato/internal/tracing"
 )
 
 type (
@@ -32,10 +35,16 @@ func NewHandler(publicKeys PublicKeyCreator, logger hclog.Logger) *Handler {
 
 // Create a new public key for the client.
 func (h *Handler) Create(ctx context.Context, payload *signingcmd.CreatePublicKey) error {
-	if err := h.publicKeys.Create(ctx, payload.GetClientId(), payload.GetPublicKey()); err != nil {
-		return fmt.Errorf("failed to create: %w", err)
-	}
+	return tracing.WithinSpan(ctx, "SigningKey.Create", func(ctx context.Context, span trace.Span) error {
+		span.SetAttributes(
+			attribute.String("client.id", payload.GetClientId()),
+		)
 
-	h.logger.Debug("created public signing key", "client_id", payload.GetClientId())
-	return nil
+		if err := h.publicKeys.Create(ctx, payload.GetClientId(), payload.GetPublicKey()); err != nil {
+			return fmt.Errorf("failed to create: %w", err)
+		}
+
+		h.logger.Debug("created public signing key", "client_id", payload.GetClientId())
+		return nil
+	})
 }
