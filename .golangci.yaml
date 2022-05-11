@@ -38,6 +38,7 @@ linters:
     - containedctx
     - nilerr
     - gocognit
+    - exhaustruct
 
 issues:
   exclude-use-default: false

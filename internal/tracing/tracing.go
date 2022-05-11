@@ -1,3 +1,5 @@
+// Package tracing provides functions for interacting with OpenTelemetry and propagating span contexts across
+// commands in the raft log.
 package tracing
 
 import (
