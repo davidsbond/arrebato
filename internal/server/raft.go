@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb/v2"
 	"go.etcd.io/bbolt"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -34,6 +35,7 @@ import (
 	nodepb "github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
 	signingcmd "github.com/davidsbond/arrebato/internal/proto/arrebato/signing/command/v1"
 	topiccmd "github.com/davidsbond/arrebato/internal/proto/arrebato/topic/command/v1"
+	"github.com/davidsbond/arrebato/internal/tracing"
 )
 
 type (
@@ -70,11 +72,13 @@ func setupRaft(config Config, fsm raft.FSM, logger hclog.Logger) (*raft.Raft, *r
 			),
 			grpc_prometheus.UnaryClientInterceptor,
 			clientinfo.UnaryClientInterceptor(config.AdvertiseAddress),
+			otelgrpc.UnaryClientInterceptor(),
 		),
 		grpc.WithChainStreamInterceptor(
 			grpc_retry.StreamClientInterceptor(),
 			grpc_prometheus.StreamClientInterceptor,
 			clientinfo.StreamClientInterceptor(config.AdvertiseAddress),
+			otelgrpc.StreamClientInterceptor(),
 		),
 	}
 
@@ -212,7 +216,7 @@ func (svr *Server) Restore(snapshot io.ReadCloser) error {
 // Apply unmarshals the contents of the raft.Log, expecting a command.Command that can be handled by a command
 // handler.
 func (svr *Server) Apply(log *raft.Log) interface{} {
-	ctx, cancel := context.WithTimeout(context.Background(), svr.config.Raft.Timeout)
+	ctx, cancel := context.WithTimeout(tracing.ExtractBytes(context.Background(), log.Extensions), svr.config.Raft.Timeout)
 	defer cancel()
 
 	lastAppliedIndex, err := svr.lastAppliedIndex()

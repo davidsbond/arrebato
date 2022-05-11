@@ -12,8 +12,12 @@ import (
 	"time"
 
 	"github.com/hashicorp/raft"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+
+	"github.com/davidsbond/arrebato/internal/tracing"
 )
 
 type (
@@ -49,31 +53,36 @@ var ErrNotLeader = errors.New("not leader")
 
 // Execute the provided command.
 func (ex *Executor) Execute(ctx context.Context, cmd Command) error {
-	if ex.applier.State() != raft.Leader {
-		return ErrNotLeader
-	}
+	return tracing.WithinSpan(ctx, "Command.Execute", func(ctx context.Context, span trace.Span) error {
+		span.SetAttributes(attribute.String("command.type", cmd.typeName()))
 
-	data, err := Marshal(cmd)
-	if err != nil {
-		return fmt.Errorf("failed to marshal command: %w", err)
-	}
+		if ex.applier.State() != raft.Leader {
+			return ErrNotLeader
+		}
 
-	log := raft.Log{
-		Data: data,
-	}
+		data, err := Marshal(cmd)
+		if err != nil {
+			return fmt.Errorf("failed to marshal command: %w", err)
+		}
 
-	future := ex.applier.ApplyLog(log, ex.timeout)
-	if future.Error() != nil {
-		return future.Error()
-	}
+		log := raft.Log{
+			Data:       data,
+			Extensions: tracing.InjectBytes(ctx),
+		}
 
-	resp := future.Response()
-	switch val := resp.(type) {
-	case error:
-		return val
-	default:
-		return nil
-	}
+		future := ex.applier.ApplyLog(log, ex.timeout)
+		if future.Error() != nil {
+			return future.Error()
+		}
+
+		resp := future.Response()
+		switch val := resp.(type) {
+		case error:
+			return val
+		default:
+			return nil
+		}
+	})
 }
 
 // New returns a new Command wrapping a proto.Message implementation.
@@ -84,6 +93,10 @@ func New(message proto.Message) Command {
 // Payload returns the underlying proto.Message implementation describing the Command.
 func (cmd Command) Payload() proto.Message {
 	return cmd.payload
+}
+
+func (cmd Command) typeName() string {
+	return string(proto.MessageName(cmd.payload))
 }
 
 // Unmarshal converts a byte slice into a Command.

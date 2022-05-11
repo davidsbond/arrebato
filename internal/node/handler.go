@@ -5,9 +5,12 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-hclog"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	nodecmd "github.com/davidsbond/arrebato/internal/proto/arrebato/node/command/v1"
 	"github.com/davidsbond/arrebato/internal/proto/arrebato/node/v1"
+	"github.com/davidsbond/arrebato/internal/tracing"
 )
 
 type (
@@ -36,40 +39,65 @@ func NewHandler(nodes Store, logger hclog.Logger) *Handler {
 
 // Add a new node to the state.
 func (h *Handler) Add(ctx context.Context, payload *nodecmd.AddNode) error {
-	if err := h.nodes.Create(ctx, payload.GetNode()); err != nil {
-		return fmt.Errorf("failed to handle command: %w", err)
-	}
+	return tracing.WithinSpan(ctx, "Node.Add", func(ctx context.Context, span trace.Span) error {
+		span.SetAttributes(
+			attribute.String("node.name", payload.GetNode().GetName()),
+		)
 
-	h.logger.Debug("node added", "name", payload.GetNode().GetName())
-	return nil
+		if err := h.nodes.Create(ctx, payload.GetNode()); err != nil {
+			return fmt.Errorf("failed to handle command: %w", err)
+		}
+
+		h.logger.Debug("node added", "name", payload.GetNode().GetName())
+		return nil
+	})
 }
 
 // Remove an existing node from the state.
 func (h *Handler) Remove(ctx context.Context, payload *nodecmd.RemoveNode) error {
-	if err := h.nodes.Delete(ctx, payload.GetName()); err != nil {
-		return fmt.Errorf("failed to handle command: %w", err)
-	}
+	return tracing.WithinSpan(ctx, "Node.Remove", func(ctx context.Context, span trace.Span) error {
+		span.SetAttributes(
+			attribute.String("node.name", payload.GetName()),
+		)
 
-	h.logger.Debug("node removed", "name", payload.GetName())
-	return nil
+		if err := h.nodes.Delete(ctx, payload.GetName()); err != nil {
+			return fmt.Errorf("failed to handle command: %w", err)
+		}
+
+		h.logger.Debug("node removed", "name", payload.GetName())
+		return nil
+	})
 }
 
 // AssignTopic assigns a topic to a desired node.
 func (h *Handler) AssignTopic(ctx context.Context, payload *nodecmd.AssignTopic) error {
-	if err := h.nodes.AssignTopic(ctx, payload.GetNodeName(), payload.GetTopicName()); err != nil {
-		return fmt.Errorf("failed to handle command: %w", err)
-	}
+	return tracing.WithinSpan(ctx, "Node.AssignTopic", func(ctx context.Context, span trace.Span) error {
+		span.SetAttributes(
+			attribute.String("node.name", payload.GetNodeName()),
+			attribute.String("topic.name", payload.GetTopicName()),
+		)
 
-	h.logger.Debug("assigned topic", "node_name", payload.GetNodeName(), "topic_name", payload.GetTopicName())
-	return nil
+		if err := h.nodes.AssignTopic(ctx, payload.GetNodeName(), payload.GetTopicName()); err != nil {
+			return fmt.Errorf("failed to handle command: %w", err)
+		}
+
+		h.logger.Debug("assigned topic", "node_name", payload.GetNodeName(), "topic_name", payload.GetTopicName())
+		return nil
+	})
 }
 
 // UnassignTopic unassigns a topic from any nodes it may be assigned to.
 func (h *Handler) UnassignTopic(ctx context.Context, payload *nodecmd.UnassignTopic) error {
-	if err := h.nodes.UnassignTopic(ctx, payload.GetName()); err != nil {
-		return fmt.Errorf("failed to handle command: %w", err)
-	}
+	return tracing.WithinSpan(ctx, "Node.UnassignTopic", func(ctx context.Context, span trace.Span) error {
+		span.SetAttributes(
+			attribute.String("node.name", payload.GetName()),
+		)
 
-	h.logger.Debug("unassigned topic", "topic_name", payload.GetName())
-	return nil
+		if err := h.nodes.UnassignTopic(ctx, payload.GetName()); err != nil {
+			return fmt.Errorf("failed to handle command: %w", err)
+		}
+
+		h.logger.Debug("unassigned topic", "topic_name", payload.GetName())
+		return nil
+	})
 }

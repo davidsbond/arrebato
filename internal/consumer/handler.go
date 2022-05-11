@@ -5,9 +5,12 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-hclog"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	consumercmd "github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/command/v1"
 	"github.com/davidsbond/arrebato/internal/proto/arrebato/consumer/v1"
+	"github.com/davidsbond/arrebato/internal/tracing"
 )
 
 type (
@@ -33,14 +36,22 @@ func NewHandler(manager Manager, logger hclog.Logger) *Handler {
 
 // SetTopicIndex handles a command that modifies the current index for a consumer on a topic.
 func (h *Handler) SetTopicIndex(ctx context.Context, cmd *consumercmd.SetTopicIndex) error {
-	if err := h.manager.SetTopicIndex(ctx, cmd.GetTopicIndex()); err != nil {
-		return fmt.Errorf("failed to set topic index: %w", err)
-	}
+	return tracing.WithinSpan(ctx, "Consumer.SetTopicIndex", func(ctx context.Context, span trace.Span) error {
+		span.SetAttributes(
+			attribute.String("topic.name", cmd.GetTopicIndex().GetTopic()),
+			attribute.String("consumer.id", cmd.GetTopicIndex().GetConsumerId()),
+			attribute.Int64("topic.index", int64(cmd.GetTopicIndex().GetIndex())),
+		)
 
-	h.logger.Debug("set topic index",
-		"topic", cmd.GetTopicIndex().GetTopic(),
-		"index", cmd.GetTopicIndex().GetIndex(),
-		"consumer_id", cmd.GetTopicIndex().GetConsumerId())
+		if err := h.manager.SetTopicIndex(ctx, cmd.GetTopicIndex()); err != nil {
+			return fmt.Errorf("failed to set topic index: %w", err)
+		}
 
-	return nil
+		h.logger.Debug("set topic index",
+			"topic", cmd.GetTopicIndex().GetTopic(),
+			"index", cmd.GetTopicIndex().GetIndex(),
+			"consumer_id", cmd.GetTopicIndex().GetConsumerId())
+
+		return nil
+	})
 }

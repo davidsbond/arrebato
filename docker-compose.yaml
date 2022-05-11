@@ -9,10 +9,14 @@ services:
       - server
       - --log-level=2
       - --advertise-address=arrebato-0
+      - --tracing-enabled
+      - --tracing-endpoint=otel-collector:4318
     ports:
       - "5000:5000"
     networks:
       - default
+    depends_on:
+      - otel-collector
 
   arrebato-1:
     build:
@@ -24,10 +28,13 @@ services:
       - --peers=arrebato-0
       - --log-level=2
       - --advertise-address=arrebato-1
+      - --tracing-enabled
+      - --tracing-endpoint=otel-collector:4318
     ports:
       - "5001:5000"
     depends_on:
       - arrebato-0
+      - otel-collector
     networks:
       - default
 
@@ -41,12 +48,31 @@ services:
       - --peers=arrebato-0
       - --log-level=2
       - --advertise-address=arrebato-2
+      - --tracing-enabled
+      - --tracing-endpoint=otel-collector:4318
     ports:
       - "5002:5000"
     depends_on:
       - arrebato-1
+      - otel-collector
     networks:
       - default
+
+  otel-collector:
+    image: otel/opentelemetry-collector:0.50.0
+    command:
+      - --config=/etc/otel-collector-config.yml
+    volumes:
+      - ./otel-collector-config.yml:/etc/otel-collector-config.yml
+    depends_on:
+      - jaeger
+    networks:
+      - default
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686"
 
 networks:
   default: {}

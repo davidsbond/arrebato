@@ -6,12 +6,15 @@ import (
 	"context"
 	"strings"
 
+	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
+
+	"github.com/davidsbond/arrebato/internal/tracing"
 )
 
 type (
@@ -53,7 +56,11 @@ func UnaryServerInterceptor(fn Extractor) grpc.UnaryServerInterceptor {
 			return nil, err
 		}
 
+		span := tracing.GetSpan(ctx)
+		span.SetAttributes(attribute.String("client.id", clientInfo.ID))
+
 		ctx = ToContext(ctx, clientInfo)
+
 		return handler(ctx, req)
 	}
 }
@@ -77,6 +84,9 @@ func StreamServerInterceptor(fn Extractor) grpc.StreamServerInterceptor {
 		if err != nil {
 			return err
 		}
+
+		span := tracing.GetSpan(ss.Context())
+		span.SetAttributes(attribute.String("client.id", clientInfo.ID))
 
 		stream := wrappedServerStream{
 			ServerStream: ss,
