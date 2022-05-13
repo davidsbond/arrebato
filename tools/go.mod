@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/anchore/syft v0.44.1
 	github.com/bufbuild/buf v1.4.0
-	github.com/golangci/golangci-lint v1.46.0
+	github.com/golangci/golangci-lint v1.46.1
 	github.com/google/go-licenses v1.2.0
 	github.com/goreleaser/goreleaser v1.8.3
 	github.com/instrumenta/kubeval v0.16.1
@@ -298,7 +298,7 @@ require (
 	github.com/ldez/tagliatelle v0.3.1 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/leonklingele/grouper v1.1.0 // indirect
-	github.com/lufeee/execinquery v1.0.0 // indirect
+	github.com/lufeee/execinquery v1.2.0 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/maratori/testpackage v1.0.1 // indirect
