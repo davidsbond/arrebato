@@ -13,7 +13,7 @@ require (
 	github.com/hashicorp/memberlist v0.3.1
 	github.com/hashicorp/raft v1.3.9
 	github.com/hashicorp/raft-boltdb/v2 v2.2.2
-	github.com/hashicorp/serf v0.9.7
+	github.com/hashicorp/serf v0.9.8
 	github.com/prometheus/client_golang v1.12.1
 	github.com/spf13/cobra v1.4.0
 	github.com/stretchr/testify v1.7.1
