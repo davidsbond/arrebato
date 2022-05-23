@@ -7,7 +7,7 @@ require (
 	github.com/bufbuild/buf v1.4.0
 	github.com/golangci/golangci-lint v1.46.2
 	github.com/google/go-licenses v1.2.0
-	github.com/goreleaser/goreleaser v1.9.0
+	github.com/goreleaser/goreleaser v1.9.1
 	github.com/instrumenta/kubeval v0.16.1
 	go.etcd.io/bbolt v1.3.6
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0
