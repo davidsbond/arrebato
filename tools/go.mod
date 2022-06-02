@@ -7,7 +7,7 @@ require (
 	github.com/bufbuild/buf v1.4.0
 	github.com/golangci/golangci-lint v1.46.2
 	github.com/google/go-licenses v1.2.1
-	github.com/goreleaser/goreleaser v1.9.1
+	github.com/goreleaser/goreleaser v1.9.2
 	github.com/instrumenta/kubeval v0.16.1
 	go.etcd.io/bbolt v1.3.6
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0
@@ -488,7 +488,7 @@ require (
 	gopkg.in/src-d/go-git.v4 v4.13.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.0 // indirect
 	honnef.co/go/tools v0.3.1 // indirect
 	k8s.io/api v0.23.3 // indirect
 	k8s.io/apimachinery v0.23.3 // indirect
